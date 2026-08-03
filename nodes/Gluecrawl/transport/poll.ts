@@ -87,7 +87,7 @@ export function waitTimeoutError(node: INode, params: WaitTimeoutParams): NodeAp
 	const subject = params.runId ? `run ${params.runId}` : `job ${params.jobId ?? 'unknown'}`;
 	const lastStatus = params.lastStatus ? ` Last observed status: "${params.lastStatus}".` : '';
 	const pickup = params.runId
-		? `Retrieve it later with the Run: Get or Item: Get Many operation using run ID ${params.runId}`
+		? `Retrieve it later with the Run: Get or Run: Get Items operation using run ID ${params.runId}`
 		: `Retrieve it later with the Job: Get operation using job ID ${params.jobId ?? 'unknown'}`;
 
 	// Marked so an operation that funnels its failures through

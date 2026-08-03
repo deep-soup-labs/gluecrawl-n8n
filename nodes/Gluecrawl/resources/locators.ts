@@ -157,8 +157,8 @@ export function runLocator(description: string): INodeProperties {
 }
 
 /**
- * The Job field on the three run-scoped operations (Run: Get, Item: Get Many,
- * Item: Download CSV).
+ * The Job field on the three run-scoped operations that are keyed on a run
+ * alone (Run: Get, Run: Get Items, Run: Download CSV).
  *
  * It is NOT sent to the API — those endpoints are keyed on the run id alone.
  * It exists to scope the Run picker, because runs are only listable per job.

@@ -22,7 +22,7 @@ import type { Item } from '../types';
  * scraped column. That is the deliberate trade: a downstream node branching on
  * `page_number` or correlating on `run_id` has to be able to trust them, and a
  * job whose columns are literally named `run_id` or `item_index` is far rarer
- * than one that reads the provenance. Item: Get Many with Simplify on is the
+ * than one that reads the provenance. Run: Get Items with Simplify on is the
  * escape hatch for the raw, un-merged row.
  */
 export function itemRowJson(row: Item, runId: string): IDataObject {

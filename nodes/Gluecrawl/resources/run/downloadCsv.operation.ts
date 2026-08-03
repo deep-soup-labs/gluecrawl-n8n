@@ -1,7 +1,7 @@
 /**
- * Item: Download CSV — `GET /v1/runs/{run_id}/items/csv`.
+ * Run: Download CSV — `GET /v1/runs/{run_id}/items/csv`.
  *
- * The same rows Get Many returns, flattened server-side into a CSV document.
+ * The same rows Get Items returns, flattened server-side into a CSV document.
  * The response is a stream of bytes rather than JSON, so it goes through the
  * transport's binary path and is attached as a binary property instead of
  * being parsed.
@@ -13,9 +13,9 @@ import { toGluecrawlApiError } from '../../transport/errors';
 import { gluecrawlApiRequestBinary } from '../../transport';
 import { jobScopeLocator, runLocator } from '../locators';
 import { assertRunInJob } from '../runScope';
-import { errorOutputItem } from '../shared';
+import { errorItem } from './shared';
 
-const showFor = { resource: ['item'], operation: ['downloadCsv'] };
+const showFor = { resource: ['run'], operation: ['downloadCsv'] };
 
 export const description: INodeProperties[] = [
 	{ ...jobScopeLocator(), displayOptions: { show: showFor } },
@@ -94,6 +94,6 @@ export async function execute(
 			context: `While exporting items for run ${runId} as CSV`,
 		});
 		if (!this.continueOnFail()) throw apiError;
-		return [errorOutputItem(apiError, index, { run_id: runId })];
+		return [errorItem(apiError, index, { run_id: runId })];
 	}
 }

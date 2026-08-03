@@ -1,5 +1,5 @@
 /**
- * Item: Get Many — `GET /v1/runs/{run_id}/items`.
+ * Run: Get Items — `GET /v1/runs/{run_id}/items`.
  *
  * The rows a scrape produced. Keys inside `data` are job-specific, so the
  * default output shape is the row itself: that is what lets Google Sheets,
@@ -19,9 +19,9 @@ import { gluecrawlApiRequestAllItems } from '../../transport/pagination';
 import { MAX_PAGE_SIZE_ITEMS, type Item } from '../../types';
 import { jobScopeLocator, runLocator } from '../locators';
 import { assertRunInJob } from '../runScope';
-import { errorOutputItem } from '../shared';
+import { errorItem } from './shared';
 
-const showFor = { resource: ['item'], operation: ['getMany'] };
+const showFor = { resource: ['run'], operation: ['getItems'] };
 
 export const description: INodeProperties[] = [
 	{ ...jobScopeLocator(), displayOptions: { show: showFor } },
@@ -103,6 +103,6 @@ export async function execute(
 			context: `While reading items for run ${runId}`,
 		});
 		if (!this.continueOnFail()) throw apiError;
-		return [errorOutputItem(apiError, index, { run_id: runId })];
+		return [errorItem(apiError, index, { run_id: runId })];
 	}
 }

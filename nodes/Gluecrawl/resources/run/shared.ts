@@ -1,5 +1,5 @@
 /**
- * Small helpers shared by the three Run operations.
+ * Small helpers shared by the Run operations.
  *
  * Kept local to the resource on purpose: if a second resource needs the same
  * two functions, hoist them to a package-level helpers module rather than
@@ -21,7 +21,16 @@ export function toJson(value: unknown): IDataObject {
 	return value as IDataObject;
 }
 
-/** The "Continue On Fail" output item. Shape is shared across every resource. */
-export function errorItem(error: NodeApiError, index: number): INodeExecutionData {
-	return errorOutputItem(error, index);
+/**
+ * The "Continue On Fail" output item. Shape is shared across every resource.
+ *
+ * `extra` is the run-scoped context the row-reading operations add (`run_id`),
+ * so a failure can be correlated back to its run without re-reading the input.
+ */
+export function errorItem(
+	error: NodeApiError,
+	index: number,
+	extra: IDataObject = {},
+): INodeExecutionData {
+	return errorOutputItem(error, index, extra);
 }

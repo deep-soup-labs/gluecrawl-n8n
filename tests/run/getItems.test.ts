@@ -1,5 +1,5 @@
 /**
- * Item: Get Many — `GET /v1/runs/{run_id}/items`.
+ * Run: Get Items — `GET /v1/runs/{run_id}/items`.
  *
  * The behaviours worth pinning down are the output shape (Simplify decides
  * whether provenance survives) and the paging loop, which has to walk 500-row
@@ -9,7 +9,7 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
 import nock from 'nock';
 
-import { execute } from '../../nodes/Gluecrawl/resources/item/getMany.operation';
+import { execute } from '../../nodes/Gluecrawl/resources/run/getItems.operation';
 import { MAX_PAGE_SIZE_ITEMS } from '../../nodes/Gluecrawl/types';
 import { BASE_URL, createExecuteContext, useNock } from '../helpers';
 
@@ -33,7 +33,7 @@ function page(offset: number, count: number, total: number) {
 	};
 }
 
-describe('item: getMany', () => {
+describe('run: getItems', () => {
 	useNock();
 
 	it('emits the row itself when Simplify is on', async () => {

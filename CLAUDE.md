@@ -183,7 +183,7 @@ nodes/Gluecrawl/
   methods/            edit-time only: the listSearch methods behind the pickers
   resources/locators.ts  the Job and Run resourceLocator property builders
   resources/shared.ts   cross-resource output shapes (error item, scraped row)
-  resources/{job,run,item}/*.operation.ts
+  resources/{job,run}/*.operation.ts
 nodes/GluecrawlTrigger/
 tests/                jest + nock
 ```
@@ -192,6 +192,12 @@ Icons are `gluecrawl.light.svg` / `gluecrawl.dark.svg`, duplicated next to each 
 the credential (n8n resolves `file:` relative to the compiled `.js`). SVG is not optional: the
 verification scan errors on a PNG icon.
 
+- **There is no `item` resource. The rows a run extracted are Run operations** — `Run: Get Items`
+  and `Run: Download CSV`. `/v1` has no item entity to address: every row endpoint is keyed on a
+  run (`/v1/runs/{id}/items`), rows carry no id of their own, and reading is the only thing that
+  can be done with one. A separate resource made the user select the same Run twice, once under
+  each name, and put the two halves of one workflow step in different dropdowns. Do not split
+  them back out.
 - Operation files import from `transport/`, never from `this.helpers` directly. The base URL
   join, the error normalisation and the auth injection all live in one place precisely so they
   cannot drift per-operation.
@@ -241,7 +247,7 @@ Do not reintroduce "one page covers any account, Starter caps active jobs at 10"
 on **active** jobs and does not bound what `GET /v1/jobs` returns. It was in an earlier version
 of this file and it was wrong.
 
-**`Run: Get`, `Item: Get Many` and `Item: Download CSV` carry a `jobId` that is never sent.** It
+**`Run: Get`, `Run: Get Items` and `Run: Download CSV` carry a `jobId` that is never sent.** It
 exists only to scope the run picker, because runs are listable only under a job. If `GET /v1/runs`
 ever lands API-side, that field and `searchRuns`'s job lookup both go away.
 
@@ -256,8 +262,9 @@ Both were found by driving the NDV, and both drove code decisions — do not "fi
   Because `/v1` keys these endpoints on the run id alone, a stale run would otherwise be fetched
   happily and return another job's data looking entirely legitimate. `resources/runScope.ts`
   is the guard: free on Run: Get (it needs the run record anyway, and the response carries
-  `job_id`), one extra unmetered read on the two Item operations, and skipped entirely when no
-  job is set — with nothing to compare against there is nothing to check.
+  `job_id`), one extra unmetered read on the two row-reading operations (Get Items, Download
+  CSV), and skipped entirely when no job is set — with nothing to compare against there is
+  nothing to check.
   Its error must stay a **marked `NodeApiError`**: `toGluecrawlApiError`'s pass-through is
   narrow, and a `NodeOperationError` gets re-wrapped into "Gluecrawl request failed", losing
   exactly the copy that explains the two fields disagree.

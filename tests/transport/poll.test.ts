@@ -232,7 +232,7 @@ describe('waitTimeoutError', () => {
 		const error = waitTimeoutError(NODE, { timeoutMs: 90_400, runId: 'run-9' });
 
 		expect(error.message).toContain('Timed out after 90s');
-		expect(error.description).toContain('Run: Get or Item: Get Many operation using run ID run-9');
+		expect(error.description).toContain('Run: Get or Run: Get Items operation using run ID run-9');
 		// Never worded as if something was aborted: /v1 has no cancel endpoint.
 		expect(error.description).not.toMatch(/cancelled the|aborted the/i);
 	});

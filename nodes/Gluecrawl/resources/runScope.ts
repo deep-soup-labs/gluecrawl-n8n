@@ -16,8 +16,9 @@
  * paying a request to avoid: it is silent, and the output looks correct.
  *
  * Run: Get pays nothing — it needs the run record anyway, and `GET /v1/runs/{id}`
- * carries `job_id`. The two Item operations pay one extra unmetered read (`/v1`
- * does not rate limit GETs) to turn a plausible wrong answer into a clear error.
+ * carries `job_id`. The two row-reading operations (Get Items, Download CSV) pay
+ * one extra unmetered read (`/v1` does not rate limit GETs) to turn a plausible
+ * wrong answer into a clear error.
  */
 
 import { NodeApiError, type IExecuteFunctions } from 'n8n-workflow';
@@ -94,7 +95,7 @@ export async function fetchRunInJob(
 
 /**
  * The same check for a caller that does NOT otherwise need the run record
- * (the two Item operations), which is why it costs an extra read.
+ * (Get Items and Download CSV), which is why it costs an extra read.
  *
  * With no job selected there is nothing to compare the run against, so the
  * request is skipped entirely rather than spent proving nothing. That also

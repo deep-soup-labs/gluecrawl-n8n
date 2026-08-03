@@ -193,7 +193,7 @@ describe('starting and waiting', () => {
 
 		// `run_id`, `page_number` and `item_index` are what a downstream node
 		// branches and correlates on, so they must mean what this node says even
-		// when a job happens to define a column with the same name. Item: Get Many
+		// when a job happens to define a column with the same name. Run: Get Items
 		// with Simplify on returns the un-merged row for the rare case that hurts.
 		expect(items[0].json.page_number).toBe(1);
 		expect(items[0].json.run_id).toBe('run-1');
