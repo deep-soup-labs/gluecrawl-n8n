@@ -1,5 +1,5 @@
 /**
- * Item: Download CSV — `GET /v1/runs/{run_id}/items/csv`.
+ * Run: Download CSV — `GET /v1/runs/{run_id}/items/csv`.
  *
  * This is the one operation whose response must NOT be parsed as JSON: the
  * bytes have to survive intact into a binary property, and the file name has to
@@ -10,13 +10,13 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
 import nock from 'nock';
 
-import { execute } from '../../nodes/Gluecrawl/resources/item/downloadCsv.operation';
+import { execute } from '../../nodes/Gluecrawl/resources/run/downloadCsv.operation';
 import { BASE_URL, createExecuteContext, useNock } from '../helpers';
 
 const RUN_ID = '8f14e45f-ceea-467a-9c1b-2a6b3f2b7c10';
 const CSV = 'title,price\nWidget,9.99\nGadget,19.99\n';
 
-describe('item: downloadCsv', () => {
+describe('run: downloadCsv', () => {
 	useNock();
 
 	it('attaches the CSV as binary data with the run id in the file name', async () => {

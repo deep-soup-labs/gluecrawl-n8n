@@ -233,7 +233,7 @@ async function performRequest(
 				// axios decodes a failure body with the same `responseType` as a
 				// success body, so an `arraybuffer` request fails with BYTES, not with
 				// a parsed envelope. Decoding it here regardless would hide the one
-				// shape Item: Download CSV actually produces.
+				// shape Run: Download CSV actually produces.
 				data: options.encoding === 'arraybuffer' ? raw : parseMaybeJson(raw.toString('utf8')),
 				headers: Object.fromEntries(response.headers.entries()),
 			},
