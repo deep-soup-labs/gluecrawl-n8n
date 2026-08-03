@@ -12,19 +12,14 @@ import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n
 import { toGluecrawlApiError } from '../../transport/errors';
 import { gluecrawlApiRequestAllItems } from '../../transport/pagination';
 import type { Run } from '../../types';
+import { jobLocator } from '../locators';
 import { errorItem, toJson } from './shared';
 
 const showFor = { resource: ['run'], operation: ['getMany'] };
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Job ID',
-		name: 'jobId',
-		type: 'string',
-		required: true,
-		default: '',
-		placeholder: 'e.g. 8f1c0d2e-5a44-4b7e-9a1f-2c3d4e5f6a7b',
-		description: 'ID of the job whose runs to list',
+		...jobLocator('The job whose runs to list'),
 		displayOptions: { show: showFor },
 	},
 	{
@@ -50,7 +45,9 @@ export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	const jobId = (this.getNodeParameter('jobId', index) as string).trim();
+	const jobId = (
+		this.getNodeParameter('jobId', index, '', { extractValue: true }) as string
+	).trim();
 	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
 
 	try {

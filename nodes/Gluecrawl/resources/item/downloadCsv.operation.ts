@@ -11,24 +11,19 @@ import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n
 
 import { toGluecrawlApiError } from '../../transport/errors';
 import { gluecrawlApiRequestBinary } from '../../transport';
+import { jobScopeLocator, runLocator } from '../locators';
+import { assertRunInJob } from '../runScope';
 import { errorOutputItem } from '../shared';
 
+const showFor = { resource: ['item'], operation: ['downloadCsv'] };
+
 export const description: INodeProperties[] = [
+	{ ...jobScopeLocator(), displayOptions: { show: showFor } },
 	{
-		displayName: 'Run ID',
-		name: 'runId',
-		type: 'string',
-		default: '',
-		required: true,
-		placeholder: 'e.g. 8f14e45f-ceea-467a-9c1b-2a6b3f2b7c10',
-		displayOptions: {
-			show: {
-				resource: ['item'],
-				operation: ['downloadCsv'],
-			},
-		},
-		description:
-			'ID of the run to export. The export covers the rows extracted so far, so run it after the run has completed unless a partial export is what you want.',
+		...runLocator(
+			'The run to export. The export covers the rows extracted so far, so run it after the run has completed unless a partial export is what you want.',
+		),
+		displayOptions: { show: showFor },
 	},
 	{
 		displayName: 'Put Output File in Field',
@@ -37,12 +32,7 @@ export const description: INodeProperties[] = [
 		default: 'data',
 		required: true,
 		placeholder: 'e.g. data',
-		displayOptions: {
-			show: {
-				resource: ['item'],
-				operation: ['downloadCsv'],
-			},
-		},
+		displayOptions: { show: showFor },
 		description:
 			'Name of the binary field the CSV file is written to. Downstream nodes such as Extract From File, Convert to File or an email attachment read the file from this field.',
 	},
@@ -52,14 +42,30 @@ export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	const runId = (this.getNodeParameter('runId', index) as string).trim();
+	const runId = (
+		this.getNodeParameter('runId', index, '', { extractValue: true }) as string
+	).trim();
 	const binaryPropertyName = (
 		this.getNodeParameter('binaryPropertyName', index, 'data') as string
+	).trim();
+
+	const jobId = (
+		this.getNodeParameter('jobId', index, '', { extractValue: true }) as string
 	).trim();
 
 	const fileName = `gluecrawl-run-${runId}.csv`;
 
 	try {
+		// One extra unmetered read so a run left over from a previously selected
+		// job fails loudly instead of exporting another job's rows.
+		await assertRunInJob.call(
+			this,
+			runId,
+			jobId,
+			index,
+			`While exporting items for run ${runId} as CSV`,
+		);
+
 		const csv = await gluecrawlApiRequestBinary.call(
 			this,
 			'GET',

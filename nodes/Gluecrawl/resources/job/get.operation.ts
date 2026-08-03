@@ -18,19 +18,13 @@ import {
 
 import { gluecrawlApiRequest } from '../../transport';
 import type { Job } from '../../types';
+import { jobLocator } from '../locators';
 import { asNodeError, jobErrorOutput, jobOperationDisplay } from './shared';
 
 const properties: INodeProperties[] = [
-	{
-		displayName: 'Job ID',
-		name: 'jobId',
-		type: 'string',
-		required: true,
-		default: '',
-		placeholder: '8f4a2c1e-0b7d-4a19-9c3f-6d5e2a1b8c04',
-		description:
-			'ID of the job to retrieve. Jobs are scoped to the account the API key belongs to; an ID from another account reads as not found.',
-	},
+	jobLocator(
+		'The job to retrieve. Jobs are scoped to the account the API key belongs to; an ID from another account reads as not found.',
+	),
 ];
 
 export const description: INodeProperties[] = updateDisplayOptions(
@@ -43,7 +37,9 @@ export async function execute(
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	try {
-		const jobId = this.getNodeParameter('jobId', index) as string;
+		const jobId = (
+			this.getNodeParameter('jobId', index, '', { extractValue: true }) as string
+		).trim();
 
 		const job = (await gluecrawlApiRequest.call(
 			this,

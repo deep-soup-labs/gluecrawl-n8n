@@ -77,17 +77,44 @@ unverified email address and from a plan without API access.
 Every operation below is its own entry in the n8n node panel — search for "Gluecrawl" and pick
 the action directly; there is no need to drop the node and then hunt through dropdowns.
 
-| Resource | Operation       | Endpoint                        | Notes                                                                                                                                                                                                                                                                                       |
-| -------- | --------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Job**  | Create          | `POST /v1/jobs`                 | URL plus either a plain-English **Goal** or an explicit **Columns** list (name + type: text, number, array, url, date). Optional **Max Pages** (1–100). Waits for mapping and the first run by default, and can emit the scraped rows directly. **Charges credits — see Costs and limits.** |
-| Job      | Get             | `GET /v1/jobs/{id}`             | Returns the job's status and, once `ready`, its `columns` (`listing` / `detail`) — the output schema the scraper will produce.                                                                                                                                                              |
-| Job      | Get Many        | `GET /v1/jobs`                  | Paginated, with a Return All option.                                                                                                                                                                                                                                                        |
-| Job      | Delete          | `DELETE /v1/jobs/{id}`          | Cascade-deletes the job's schedule. Irreversible.                                                                                                                                                                                                                                           |
-| **Run**  | Start           | `POST /v1/jobs/{id}/runs`       | Reruns a `ready` job against its cached mapper config — no LLM work, no upfront charge, cost settled after completion. Optional **Max Pages** override. Waits for the run to finish by default.                                                                                             |
-| Run      | Get             | `GET /v1/runs/{id}`             | Status, item and page counts, credits used, billing breakdown.                                                                                                                                                                                                                              |
-| Run      | Get Many        | `GET /v1/jobs/{id}/runs`        | Run history for one job, paginated.                                                                                                                                                                                                                                                         |
-| **Item** | Get Many        | `GET /v1/runs/{id}/items`       | One n8n item per scraped row: the row's `data` plus `page_number` and `item_index`. Return All auto-paginates at the API maximum of 500 rows per request.                                                                                                                                   |
-| Item     | Download CSV    | `GET /v1/runs/{id}/items/csv`   | The run's rows as a CSV file on the item's binary property — ready for Gmail, Drive or S3 nodes.                                                                                                                                                                                            |
+| Resource | Operation    | Endpoint                      | Notes                                                                                                                                                                                                                                                                                       |
+| -------- | ------------ | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Job**  | Create       | `POST /v1/jobs`               | URL plus either a plain-English **Goal** or an explicit **Columns** list (name + type: text, number, array, url, date). Optional **Max Pages** (1–100). Waits for mapping and the first run by default, and can emit the scraped rows directly. **Charges credits — see Costs and limits.** |
+| Job      | Get          | `GET /v1/jobs/{id}`           | Returns the job's status and, once `ready`, its `columns` (`listing` / `detail`) — the output schema the scraper will produce.                                                                                                                                                              |
+| Job      | Get Many     | `GET /v1/jobs`                | Paginated, with a Return All option.                                                                                                                                                                                                                                                        |
+| Job      | Delete       | `DELETE /v1/jobs/{id}`        | Cascade-deletes the job's schedule. Irreversible.                                                                                                                                                                                                                                           |
+| **Run**  | Start        | `POST /v1/jobs/{id}/runs`     | Reruns a `ready` job against its cached mapper config — no LLM work, no upfront charge, cost settled after completion. Optional **Max Pages** override. Waits for the run to finish by default.                                                                                             |
+| Run      | Get          | `GET /v1/runs/{id}`           | Status, item and page counts, credits used, billing breakdown.                                                                                                                                                                                                                              |
+| Run      | Get Many     | `GET /v1/jobs/{id}/runs`      | Run history for one job, paginated.                                                                                                                                                                                                                                                         |
+| **Item** | Get Many     | `GET /v1/runs/{id}/items`     | One n8n item per scraped row: the row's `data` plus `page_number` and `item_index`. Return All auto-paginates at the API maximum of 500 rows per request.                                                                                                                                   |
+| Item     | Download CSV | `GET /v1/runs/{id}/items/csv` | The run's rows as a CSV file on the item's binary property — ready for Gmail, Drive or S3 nodes.                                                                                                                                                                                            |
+
+### Picking jobs and runs
+
+**Job** and **Run** fields are pickers, not bare text boxes. Each has two modes:
+
+- **From List** — browse or search the jobs on your account, and the runs of the selected job.
+  The list is fetched with your credential, so select the credential first.
+- **By ID** — paste a UUID, or switch to Expression and wire an ID from an upstream node, e.g.
+  `{{ $json.id }}`. This is the mode to use when the ID comes from another node rather than from
+  you.
+
+Jobs are listed as `host - status` (a leading `www.` is dropped), runs as
+`timestamp - status`. The status matters: **Run: Start** only accepts a `ready` job, and
+`failed` / `stale` are terminal — those need a new job, not a retry. Two jobs against the same
+host with the same status look identical in the list; pick by ID if you keep several.
+
+`Run: Get`, `Item: Get Many` and `Item: Download CSV` ask for a **Job** as well as a **Run**. The
+job is what scopes the run list — `/v1` lists runs only under a job. It is not sent to the API,
+which identifies the run by its ID alone. Every Gluecrawl output that carries a run ID carries
+the job ID beside it (`Run: Start` returns `job_id` on the run, `Job: Create` returns the job
+with the run nested under `run`, and the trigger emits both), so both fields can be filled from
+the same upstream record.
+
+Note that changing the Job does **not** clear a run already chosen in the Run field — that is
+n8n's behaviour for any dependent picker, not something the node can override. The node checks
+the two agree before it reads anything and fails with a clear message if they have drifted
+apart, so a mismatch can never quietly return another job's data.
 
 ### Output shapes
 
