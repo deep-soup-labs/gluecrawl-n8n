@@ -43,17 +43,5 @@ export const jobOperations: INodeProperties = {
 			description: 'Retrieve the jobs on this account, newest first',
 			action: 'Get many jobs',
 		},
-		{
-			name: 'Remove Schedule',
-			value: 'removeSchedule',
-			description: 'Remove a job schedule so it stops running on its own',
-			action: 'Remove a job schedule',
-		},
-		{
-			name: 'Set Schedule',
-			value: 'setSchedule',
-			description: 'Set or replace the schedule that re-runs a ready job automatically',
-			action: 'Set a job schedule',
-		},
 	],
 };
