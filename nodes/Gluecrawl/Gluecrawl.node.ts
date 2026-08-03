@@ -23,6 +23,7 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
+import { searchJobs, searchRuns } from './methods';
 import * as item from './resources/item';
 import * as job from './resources/job';
 import * as run from './resources/run';
@@ -87,7 +88,7 @@ export class Gluecrawl implements INodeType {
 		usableAsTool: {
 			replacements: {
 				description:
-					'Scrape a website and get structured rows back. Job: Create is the expensive path — it charges the job-creation cost upfront, runs an LLM over the site to work out how to scrape it, and mints a job that stays on the account until deleted, so calling it in a loop accumulates both jobs and charges. Before creating a job, check Job: Get Many for an existing job on the same URL and re-scrape it with Run: Start, which reuses the cached config and skips the mapping cost. Keep Max Pages small (1 or 2) and raise it only if the rows come back incomplete. Item: Get Many reads the rows of a finished run and costs nothing.',
+					'Scrape a website and get structured rows back. Job: Create is the expensive path — it charges the job-creation cost upfront, runs an LLM over the site to work out how to scrape it, and mints a job that stays on the account until deleted, so calling it in a loop accumulates both jobs and charges. Before creating a job, check Job: Get Many for an existing job on the same URL and re-scrape it with Run: Start, which reuses the cached config and skips the mapping cost. Keep Max Pages small (1 or 2) and raise it only if the rows come back incomplete. Item: Get Many reads the rows of a finished run and costs nothing. The run-scoped operations take both a Job and a Run: every Gluecrawl output carrying a run ID carries its job ID beside it, so read both from the same record rather than looking one up.',
 			},
 		},
 		properties: [
@@ -119,6 +120,17 @@ export class Gluecrawl implements INodeType {
 			...run.description,
 			...item.description,
 		],
+	};
+
+	/**
+	 * Edit-time methods backing the Job and Run pickers. Not part of the router:
+	 * these never run during an execution.
+	 */
+	methods = {
+		listSearch: {
+			searchJobs,
+			searchRuns,
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

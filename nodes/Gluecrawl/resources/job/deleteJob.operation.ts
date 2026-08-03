@@ -16,19 +16,13 @@ import {
 } from 'n8n-workflow';
 
 import { gluecrawlApiRequest } from '../../transport';
+import { jobLocator } from '../locators';
 import { asNodeError, jobErrorOutput, jobOperationDisplay } from './shared';
 
 const properties: INodeProperties[] = [
-	{
-		displayName: 'Job ID',
-		name: 'jobId',
-		type: 'string',
-		required: true,
-		default: '',
-		placeholder: '8f4a2c1e-0b7d-4a19-9c3f-6d5e2a1b8c04',
-		description:
-			'ID of the job to delete. This also removes its runs, their extracted rows and any schedule attached to it, and cannot be undone.',
-	},
+	jobLocator(
+		'The job to delete. This also removes its runs, their extracted rows and any schedule attached to it, and cannot be undone.',
+	),
 ];
 
 export const description: INodeProperties[] = updateDisplayOptions(
@@ -41,7 +35,9 @@ export async function execute(
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	try {
-		const jobId = this.getNodeParameter('jobId', index) as string;
+		const jobId = (
+			this.getNodeParameter('jobId', index, '', { extractValue: true }) as string
+		).trim();
 
 		await gluecrawlApiRequest.call(this, 'DELETE', `/v1/jobs/${jobId}`, undefined, undefined, {
 			context: 'While deleting the job',

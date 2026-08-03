@@ -9,23 +9,20 @@
 
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
-import { gluecrawlApiRequest } from '../../transport';
 import { toGluecrawlApiError } from '../../transport/errors';
 import type { Run } from '../../types';
+import { jobScopeLocator, runLocator } from '../locators';
+import { fetchRunInJob } from '../runScope';
 import { errorItem, toJson } from './shared';
 
 const showFor = { resource: ['run'], operation: ['get'] };
 
 export const description: INodeProperties[] = [
+	{ ...jobScopeLocator(), displayOptions: { show: showFor } },
 	{
-		displayName: 'Run ID',
-		name: 'runId',
-		type: 'string',
-		required: true,
-		default: '',
-		placeholder: 'e.g. 4d2b9a10-73e6-49c1-8f5a-0b1c2d3e4f50',
-		description:
-			'ID of the run to retrieve. Run: Start returns the run record it created, and the Gluecrawl Trigger emits one on every run event.',
+		...runLocator(
+			'The run to retrieve. Run: Start returns the run record it created, and the Gluecrawl Trigger emits one on every run event.',
+		),
 		displayOptions: { show: showFor },
 	},
 ];
@@ -34,17 +31,23 @@ export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	const runId = (this.getNodeParameter('runId', index) as string).trim();
+	const runId = (
+		this.getNodeParameter('runId', index, '', { extractValue: true }) as string
+	).trim();
+	const jobId = (
+		this.getNodeParameter('jobId', index, '', { extractValue: true }) as string
+	).trim();
 
 	try {
-		const run = (await gluecrawlApiRequest.call(
+		// Free scope check: this operation needs the run record anyway, and the
+		// response carries `job_id`.
+		const run: Run = await fetchRunInJob.call(
 			this,
-			'GET',
-			`/v1/runs/${runId}`,
-			undefined,
-			undefined,
-			{ context: `While fetching run ${runId}`, itemIndex: index },
-		)) as Run;
+			runId,
+			jobId,
+			index,
+			`While fetching run ${runId}`,
+		);
 
 		return [{ json: toJson(run), pairedItem: { item: index } }];
 	} catch (error) {

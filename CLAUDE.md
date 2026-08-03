@@ -180,6 +180,8 @@ nodes/Gluecrawl/
   types.ts            /v1 wire types + shared constants (page sizes, max_pages bounds)
   transport/          the only place that talks HTTP: request wrapper, error mapping,
                       poll/wait helpers, offset pagination
+  methods/            edit-time only: the listSearch methods behind the pickers
+  resources/locators.ts  the Job and Run resourceLocator property builders
   resources/shared.ts   cross-resource output shapes (error item, scraped row)
   resources/{job,run,item}/*.operation.ts
 nodes/GluecrawlTrigger/
@@ -201,6 +203,79 @@ verification scan errors on a PNG icon.
   `description`. An unknown key is silently dropped by the API and `type` defaults to `text`, so
   a typo here produces a wrong job with no error.
 - `max_pages` is an integer 1–100 on both create and rerun.
+
+## Ids are pickers, and they must stay `resourceLocator`
+
+Every `jobId` / `runId` is a `resourceLocator` built by `resources/locators.ts`, with a
+`From List` mode backed by `methods/listSearch.ts` and a `By ID` mode. **Do not "simplify" one
+into `type: 'options'` + `loadOptionsMethod`.** Three separate things break if you do:
+
+- The verification scan applies `eslint-plugin-n8n-nodes-base`'s `nodes` ruleset, where
+  `node-param-display-name-wrong-for-dynamic-options` and
+  `node-param-description-wrong-for-dynamic-options` are errors. They force the field to be
+  renamed `<Entity> Name or ID` and force the description to end in a fixed boilerplate
+  sentence, overwriting the per-operation copy. `allowInlineConfig: false` means an
+  `eslint-disable` does not suppress it. No rule in that plugin inspects `resourceLocator`.
+- `type: 'options'` is on the editor's `$fromAI` denylist (`['options', 'credentialsSelect']`),
+  so a dropdown cannot be filled by an AI agent. The node sets `usableAsTool` and its tool copy
+  steers agents at Run: Start against an existing job — an unfillable `jobId` breaks exactly
+  the path that copy recommends.
+- `loadOptions` has no pagination; `/v1` caps `limit` at 100.
+
+Read every id with `getNodeParameter(name, index, '', { extractValue: true })`. The option is a
+passthrough for a plain string, so it is also correct for a value arriving from an expression.
+
+**There is no server-side search on `/v1`.** `GET /v1/jobs` and `GET /v1/jobs/{id}/runs` take
+`limit` and `offset` only, so the editor's `filter` has to be applied in `listSearch`.
+
+Filtering only the page the editor asked for is **not** sufficient, and this is a measured fact,
+not a guess: a real account had **122 jobs**, and searching for one at offset 104 returned zero
+results for a job that plainly existed. A picker answering "no such job" for a job that exists is
+worse than one with no search box. So `browseOrScan` has two modes — an unfiltered **browse**
+hands back one page plus a `paginationToken`, while a filtered **search** pages forward itself
+(`SEARCH_SCAN_LIMIT` records, `SEARCH_MATCH_LIMIT` matches) and returns its matches whole with
+no token. A token would be an offset into the _unfiltered_ list, so "load more" would append
+non-matching rows underneath the matches.
+
+Do not reintroduce "one page covers any account, Starter caps active jobs at 10" — that cap is
+on **active** jobs and does not bound what `GET /v1/jobs` returns. It was in an earlier version
+of this file and it was wrong.
+
+**`Run: Get`, `Item: Get Many` and `Item: Download CSV` carry a `jobId` that is never sent.** It
+exists only to scope the run picker, because runs are listable only under a job. If `GET /v1/runs`
+ever lands API-side, that field and `searchRuns`'s job lookup both go away.
+
+### Two behaviours verified in a real editor (n8n 2.32.7), not assumed
+
+Both were found by driving the NDV, and both drove code decisions — do not "fix" either back.
+
+- **n8n never clears a dependent resource locator.** Change the Job and the run LIST re-fetches
+  for the new job, but the already-selected run stays in the field (pinned to the top of the
+  refreshed list as the current selection). `loadOptionsDependsOn: ['jobId']` changes neither
+  half — it was tried and removed rather than left implying a guarantee n8n does not give.
+  Because `/v1` keys these endpoints on the run id alone, a stale run would otherwise be fetched
+  happily and return another job's data looking entirely legitimate. `resources/runScope.ts`
+  is the guard: free on Run: Get (it needs the run record anyway, and the response carries
+  `job_id`), one extra unmetered read on the two Item operations, and skipped entirely when no
+  job is set — with nothing to compare against there is nothing to check.
+  Its error must stay a **marked `NodeApiError`**: `toGluecrawlApiError`'s pass-through is
+  narrow, and a `NodeOperationError` gets re-wrapped into "Gluecrawl request failed", losing
+  exactly the copy that explains the two fields disagree.
+- **The resource-locator list renders `name` only.** `INodeListSearchItems.description` is
+  dropped by the list UI. That is why the job label carries the status (`host - status`, `www.`
+  stripped) — status decides whether a job is usable at all (Run: Start refuses anything not
+  `ready`; `failed`/`stale` are terminal), so hiding it would let users pick a job the next
+  operation rejects. Keep any decision-critical field in `name`.
+  Runs are `timestamp - status`. Goal text and item/page counts were deliberately dropped from
+  both labels for scannability; the cost, accepted knowingly, is that two jobs on the same host
+  with the same status render identically. Measured on a real 122-job account: 113 distinct
+  labels, 8 of them shared, leaving **17 rows (14%) indistinguishable in the list**. Only `www.`
+  is stripped — `shop.`/`en.`/`m.` can be different sites.
+
+`searchRuns` returns `{ results: [] }` when `jobId` is empty or is an unresolved expression. That
+is a guard clause reached before any request, not a swallowed error — the community-nodes
+`no-silent-error-swallowing` rule is on, and a caught-and-emptied list would also hide a bad
+credential behind "no runs found".
 
 ## Dev loop
 
