@@ -12,11 +12,9 @@ import * as create from './create.operation';
 import * as deleteJob from './deleteJob.operation';
 import * as get from './get.operation';
 import * as getMany from './getMany.operation';
-import * as removeSchedule from './removeSchedule.operation';
-import * as setSchedule from './setSchedule.operation';
 import { jobOperations } from './job.description';
 
-export { create, deleteJob, get, getMany, removeSchedule, setSchedule, jobOperations };
+export { create, deleteJob, get, getMany, jobOperations };
 export { JOB_RESOURCE } from './shared';
 
 /**
@@ -30,6 +28,4 @@ export const jobDescription: INodeProperties[] = [
 	...deleteJob.description,
 	...get.description,
 	...getMany.description,
-	...removeSchedule.description,
-	...setSchedule.description,
 ];

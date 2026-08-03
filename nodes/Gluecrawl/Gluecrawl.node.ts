@@ -44,8 +44,6 @@ const OPERATIONS: Record<string, Record<string, OperationExecute>> = {
 		delete: job.deleteJob.execute,
 		get: job.get.execute,
 		getMany: job.getMany.execute,
-		removeSchedule: job.removeSchedule.execute,
-		setSchedule: job.setSchedule.execute,
 	},
 	run: {
 		get: run.get.execute,
