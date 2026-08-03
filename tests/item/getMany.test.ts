@@ -237,10 +237,10 @@ describe('item: getMany', () => {
 		const result = await execute.call(ctx as unknown as IExecuteFunctions, 0);
 
 		expect(result).toHaveLength(1);
-		expect(result[0].json.error).toBe('The Gluecrawl API requires a Pro or Enterprise plan');
+		expect(result[0].json.error).toBe('The Gluecrawl account is on a plan without API access');
 		// The actionable half has to survive continue-on-fail, in the same
 		// `errorDescription` key every other resource uses.
-		expect(String(result[0].json.errorDescription)).toContain('Pro or Enterprise');
+		expect(String(result[0].json.errorDescription)).toContain('Requires a Starter plan.');
 		expect(result[0].json.run_id).toBe(RUN_ID);
 		expect(result[0].pairedItem).toEqual({ item: 0 });
 	});

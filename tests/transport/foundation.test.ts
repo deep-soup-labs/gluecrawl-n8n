@@ -110,7 +110,7 @@ describe('parseGluecrawlError', () => {
 });
 
 describe('toGluecrawlApiError', () => {
-	it('corrects the plan_required wording instead of echoing the API', () => {
+	it('echoes the plan_required message under a summary of its own', () => {
 		const error = toGluecrawlApiError(
 			NODE,
 			httpError(403, {
@@ -121,10 +121,10 @@ describe('toGluecrawlApiError', () => {
 			}),
 		);
 
-		expect(error.message).toContain('Pro or Enterprise');
-		expect(error.description).toContain('Pro or Enterprise');
-		// The API's own message names Starter, which cannot call the API either.
-		expect(error.message).not.toContain('Starter plan or higher');
+		expect(error.message).toContain('without API access');
+		expect(error.description).toContain('This endpoint requires a Starter plan or higher.');
+		// The actionable half is the upgrade pointer the API body does not carry.
+		expect(error.description).toContain('https://www.gluecrawl.ai/pricing');
 	});
 
 	it('spells out all three job_not_ready causes', () => {

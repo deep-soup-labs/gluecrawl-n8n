@@ -4,9 +4,9 @@
  * pieces n8n Cloud verification reads at review time (password flag,
  * documentation URL, icon).
  *
- * The load-bearing assertion is the 403 rule. The API's own `plan_required`
- * message names Starter, a plan that cannot call the API at all, so the
- * credential test must not repeat it.
+ * The load-bearing assertion is the 403 rule. A 403 is two different failures —
+ * an unverified email address and a plan without API access — and the rule has
+ * to name both, or the user pays to fix the wrong one.
  */
 
 import type { INodeProperties } from 'n8n-workflow';
@@ -117,18 +117,16 @@ describe('GluecrawlApi credential', () => {
 		expect(rule?.properties.message).toMatch(/Base URL/i);
 	});
 
-	it('names Pro or Enterprise on 403 and never repeats the API wording', () => {
+	it('names both 403 causes and the plan API access starts at', () => {
 		const rule = credential.test.rules?.find(
 			(entry) => entry.type === 'responseCode' && entry.properties.value === 403,
 		);
 		const message = String(rule?.properties.message);
 
-		expect(message).toContain('Pro or Enterprise');
+		// API access starts at Starter, so that is the plan to point at.
+		expect(message).toMatch(/Starter or above/);
 		// 403 is two different failures; both have to be named or the user
 		// upgrades a plan when the real problem was an unverified email.
 		expect(message).toMatch(/unverified|verif/i);
-		// The API says "requires a Starter plan or higher". Starter has
-		// allows_api = false, so echoing it sells the wrong plan.
-		expect(message).not.toMatch(/Starter/);
 	});
 });

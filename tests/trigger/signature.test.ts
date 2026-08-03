@@ -57,7 +57,9 @@ function signedContext(
 		rawBody,
 		headers: header === '' ? {} : { [SIGNATURE_HEADER]: header },
 		staticData:
-			overrides.secret === undefined ? { webhookSecret: SECRET } : { webhookSecret: overrides.secret },
+			overrides.secret === undefined
+				? { webhookSecret: SECRET }
+				: { webhookSecret: overrides.secret },
 	});
 }
 
@@ -85,7 +87,9 @@ describe('trigger: delivery signature', () => {
 			parameters: { jobId: '' },
 			body: { ...PAYLOAD, type: 'run.completed' },
 			rawBody: JSON.stringify({ ...PAYLOAD, type: 'run.completed' }),
-			headers: { [SIGNATURE_HEADER]: `t=${timestamp},v1=${computeSignature(SECRET, timestamp, rawBody)}` },
+			headers: {
+				[SIGNATURE_HEADER]: `t=${timestamp},v1=${computeSignature(SECRET, timestamp, rawBody)}`,
+			},
 			staticData: { webhookSecret: SECRET },
 		});
 

@@ -59,8 +59,8 @@ carries useful extras beyond `code`/`message` (`limit`, `upgrade_url`, ...) — 
 **n8n-core never hands a node the raw HTTP failure.** `httpRequestWithAuthentication` catches it
 and re-throws `new NodeApiError(this.getNode(), error)`. So at runtime every failure reaching
 `toGluecrawlApiError` is already a `NodeApiError`, and a blanket "already a `NodeApiError`, leave
-it alone" short-circuit silently disables the entire mapper in production — including the
-corrected `plan_required` copy and both `isGluecrawlErrorCode` branches in the trigger — while
+it alone" short-circuit silently disables the entire mapper in production — every code-specific
+message and both `isGluecrawlErrorCode` branches in the trigger — while
 every unit test still passes, because the tests throw the axios-shaped error the code was written
 against.
 
@@ -80,30 +80,27 @@ exactly what makes a mapped error useless to the user who chose to keep going.
 
 ### Status → code map
 
-| Status | Code                     | Node behaviour                                                                                                                           |
-| ------ | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| 401    | `invalid_api_key`        | Point at the dashboard; note that minting a new key revokes the old one.                                                                 |
-| 403    | `email_not_verified`     | Account-level, not key-level. Must be mapped — the PRD omitted it.                                                                       |
-| 403    | `plan_required`          | **Do not echo the API message.** See below.                                                                                              |
-| 402    | `insufficient_credits`   | Add credits; not retryable as-is.                                                                                                        |
-| 404    | `not_found`              | Wrong id, wrong account, or a deleted job/run.                                                                                           |
-| 409    | `job_not_ready`          | Either mapping is still in progress, or the job is `failed`/`stale` — which is terminal and needs a **new job**, not a retry. Say which. |
-| 409    | `job_limit_reached`      | Unreachable on Pro/Enterprise. Map defensively, build no UX around it.                                                                   |
-| 409    | `webhook_limit_reached`  | The account has no free endpoint slots (cap is API-side, currently 5). Carries `limit`. Trigger-specific.                               |
-| 422    | `page_limit_exceeded`    | Carries `limit` + `upgrade_url`. Unreachable on Pro/Enterprise; map defensively.                                                         |
-| 422    | `invalid_webhook_url`    | Target is not https, or resolves to a private/loopback IP.                                                                               |
-| 429    | `rate_limited`           | Surface `Retry-After` from the response headers.                                                                                         |
-| 502    | `enqueue_failed`         | Retryable; credits are auto-refunded. Say so, so users retry instead of filing a bug.                                                    |
+| Status | Code                    | Node behaviour                                                                                                                           |
+| ------ | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| 401    | `invalid_api_key`       | Point at the dashboard; note that minting a new key revokes the old one.                                                                 |
+| 403    | `email_not_verified`    | Account-level, not key-level. Must be mapped — the PRD omitted it.                                                                       |
+| 403    | `plan_required`         | Echo the API message and add the upgrade URL. API access starts at Starter.                                                              |
+| 402    | `insufficient_credits`  | Add credits; not retryable as-is.                                                                                                        |
+| 404    | `not_found`             | Wrong id, wrong account, or a deleted job/run.                                                                                           |
+| 409    | `job_not_ready`         | Either mapping is still in progress, or the job is `failed`/`stale` — which is terminal and needs a **new job**, not a retry. Say which. |
+| 409    | `job_limit_reached`     | Genuinely reachable: Starter caps active jobs at 10 (Pro/Enterprise are uncapped). Real UX, not defensive mapping.                       |
+| 409    | `webhook_limit_reached` | The account has no free endpoint slots (cap is API-side, currently 5). Carries `limit`. Trigger-specific.                                |
+| 422    | `page_limit_exceeded`   | Carries `limit` + `upgrade_url`. Every API-capable plan caps at 100 pages — the node's own `MAX_MAX_PAGES` — so map defensively.         |
+| 422    | `invalid_webhook_url`   | Target is not https, or resolves to a private/loopback IP.                                                                               |
+| 429    | `rate_limited`          | Surface `Retry-After` from the response headers.                                                                                         |
+| 502    | `enqueue_failed`        | Retryable; credits are auto-refunded. Say so, so users retry instead of filing a bug.                                                    |
 
-### `plan_required`: the upstream message is wrong
+### `plan_required`
 
-The API's `plan_required` message says the caller "requires a Starter plan or higher".
-**Starter has `allows_api = false`** — API access is Pro or Enterprise. Passing the API string
-through would send users to buy a plan that still cannot call the API.
-
-So: for this one code the node emits **our own** message naming Pro/Enterprise, and the same
-correction is applied in the credential test's 403 rule and in the README. If the API message is
-ever fixed upstream, this override can be deleted — check `gluecrawl-api` before assuming it has.
+API access starts at **Starter** (`allows_api = true`, one key), so the API's own
+"requires a Starter plan or higher" message is correct and is echoed straight through, like every
+other code. Only Free cannot mint a key. The override that used to rewrite this copy to
+Pro/Enterprise is gone — do not reintroduce it.
 
 ### Rate limits worth remembering
 

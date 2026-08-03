@@ -324,7 +324,6 @@ describe('trigger: create', () => {
 		expect(ctx.staticData.createdByNode).toBe(false);
 	});
 
-
 	it('surfaces a registration failure that is not a slot conflict', async () => {
 		listWebhooks([]);
 		nock(BASE_URL)

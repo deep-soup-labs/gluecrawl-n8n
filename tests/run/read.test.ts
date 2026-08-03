@@ -113,10 +113,12 @@ describe('Run: Get', () => {
 		});
 		const items = await getRun.call(asExecute(context), 0);
 
-		expect(items[0].json.error).toBe('The Gluecrawl API requires a Pro or Enterprise plan');
-		// The corrected wording has to survive into the error branch as well.
-		expect(String(items[0].json.errorDescription)).toContain('Pro or Enterprise');
-		expect(String(items[0].json.errorDescription)).not.toContain('Starter plan or higher');
+		expect(items[0].json.error).toBe('The Gluecrawl account is on a plan without API access');
+		// The mapped wording has to survive into the error branch as well.
+		expect(String(items[0].json.errorDescription)).toContain(
+			'This endpoint requires a Starter plan or higher.',
+		);
+		expect(String(items[0].json.errorDescription)).toContain('https://www.gluecrawl.ai/pricing');
 		scope.done();
 	});
 });

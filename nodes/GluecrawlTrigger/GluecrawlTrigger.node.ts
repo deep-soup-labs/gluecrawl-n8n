@@ -207,13 +207,9 @@ function verifyInboundDelivery(
 function endpointLimitError(node: INode, error: unknown): NodeOperationError {
 	const limit = parseGluecrawlError(error).extras?.limit;
 	const cap = typeof limit === 'number' ? `${limit}` : 'its';
-	return new NodeOperationError(
-		node,
-		'The Gluecrawl account has no free webhook endpoint slots',
-		{
-			description: `This account has reached ${cap} webhook endpoint limit, so this workflow could not register its own. Delete an endpoint you no longer need in the Gluecrawl dashboard (${DASHBOARD_WEBHOOKS_URL}), or deactivate a workflow that owns one, then activate this workflow again.`,
-		},
-	);
+	return new NodeOperationError(node, 'The Gluecrawl account has no free webhook endpoint slots', {
+		description: `This account has reached ${cap} webhook endpoint limit, so this workflow could not register its own. Delete an endpoint you no longer need in the Gluecrawl dashboard (${DASHBOARD_WEBHOOKS_URL}), or deactivate a workflow that owns one, then activate this workflow again.`,
+	});
 }
 
 export class GluecrawlTrigger implements INodeType {
