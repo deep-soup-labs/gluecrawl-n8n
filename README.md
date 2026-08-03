@@ -83,8 +83,6 @@ the action directly; there is no need to drop the node and then hunt through dro
 | Job      | Get             | `GET /v1/jobs/{id}`             | Returns the job's status and, once `ready`, its `columns` (`listing` / `detail`) — the output schema the scraper will produce.                                                                                                                                                              |
 | Job      | Get Many        | `GET /v1/jobs`                  | Paginated, with a Return All option.                                                                                                                                                                                                                                                        |
 | Job      | Delete          | `DELETE /v1/jobs/{id}`          | Cascade-deletes the job's schedule. Irreversible.                                                                                                                                                                                                                                           |
-| Job      | Set Schedule    | `PUT /v1/jobs/{id}/schedule`    | Gluecrawl-side recurring runs: one-time, minutes, hours, days, weeks, months. A weekly schedule requires at least one weekday and an interval of exactly 1.                                                                                                                                 |
-| Job      | Remove Schedule | `DELETE /v1/jobs/{id}/schedule` | Leaves the job intact.                                                                                                                                                                                                                                                                      |
 | **Run**  | Start           | `POST /v1/jobs/{id}/runs`       | Reruns a `ready` job against its cached mapper config — no LLM work, no upfront charge, cost settled after completion. Optional **Max Pages** override. Waits for the run to finish by default.                                                                                             |
 | Run      | Get             | `GET /v1/runs/{id}`             | Status, item and page counts, credits used, billing breakdown.                                                                                                                                                                                                                              |
 | Run      | Get Many        | `GET /v1/jobs/{id}/runs`        | Run history for one job, paginated.                                                                                                                                                                                                                                                         |
@@ -230,14 +228,6 @@ The user supplies a URL and a goal; the node mints the job, waits for mapping an
 and emits the rows. Two nodes, one round trip. This is also the AI-agent path — keep Max Pages
 small here, since each submission is a new billable job.
 
-### D. Change monitoring with no n8n scheduling
-
-**Gluecrawl (Job: Set Schedule) once → Gluecrawl Trigger (`run.completed`) → compare → alert.**
-
-Set the recurrence on the job itself, then let the trigger react. The recurring workflow needs
-no Schedule Trigger at all and burns no n8n executions between events — Gluecrawl runs the
-scrape on its own clock and calls you when there is something to look at.
-
 ---
 
 ## Costs and limits
@@ -270,7 +260,6 @@ automatically; `502 enqueue_failed` is likewise refunded and is safe to retry.
 | Endpoint group                               | Limit            |
 | -------------------------------------------- | ---------------- |
 | Job: Create                                  | 60 / minute      |
-| Job: Set Schedule, Job: Remove Schedule      | 60 / minute      |
 | Run: Start                                   | 10 / minute      |
 | Webhook create / update / delete / test      | 10 / minute      |
 | All GET operations (Job/Run/Item reads, CSV) | not rate limited |
