@@ -2,10 +2,17 @@
 
 ## What this is
 
-`n8n-nodes-gluecrawl` is the n8n community-node package wrapping Gluecrawl's public `/v1` API.
-Two node classes (`Gluecrawl` action node, `Gluecrawl Trigger` webhook node) plus one credential
-(`Gluecrawl API`). It is a **pure client** — no backend changes belong here, and no Gluecrawl
-business logic is reimplemented in it.
+This repo (`gluecrawl-n8n`) holds the n8n community-node package wrapping Gluecrawl's public
+`/v1` API. Two node classes (`Gluecrawl` action node, `Gluecrawl Trigger` webhook node) plus one
+credential (`Gluecrawl API`). It is a **pure client** — no backend changes belong here, and no
+Gluecrawl business logic is reimplemented in it.
+
+**The repo name and the npm package name differ on purpose.** The repo is `gluecrawl-n8n`, but
+the published package is **`n8n-nodes-gluecrawl`** and must stay that way: n8n only recognises
+community nodes whose package name starts with `n8n-nodes-` (or `@scope/n8n-nodes-`). The same
+string is also the prefix of every fully-qualified node type (`n8n-nodes-gluecrawl.gluecrawl`),
+so it is baked into the `.node.json` codex files and the workflow JSON of everyone who installs
+the package. Renaming it is a breaking change for existing workflows, not a cosmetic edit.
 
 The repo is public and MIT-licensed because n8n Cloud verification requires both.
 

@@ -11,10 +11,10 @@
   "homepage": "https://www.gluecrawl.ai",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/deep-soup-labs/n8n-nodes-gluecrawl.git"
+    "url": "git+https://github.com/deep-soup-labs/gluecrawl-n8n.git"
   },
   "bugs": {
-    "url": "https://github.com/deep-soup-labs/n8n-nodes-gluecrawl/issues"
+    "url": "https://github.com/deep-soup-labs/gluecrawl-n8n/issues"
   },
   "keywords": [
     "n8n-community-node-package",
