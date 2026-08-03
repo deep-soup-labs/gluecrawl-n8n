@@ -15,10 +15,7 @@
 
 import nock from 'nock';
 
-import {
-	SIGNATURE_HEADER,
-	computeSignature,
-} from '../../nodes/GluecrawlTrigger/signature';
+import { SIGNATURE_HEADER, computeSignature } from '../../nodes/GluecrawlTrigger/signature';
 import type { IBinaryData, IDataObject, IHttpRequestOptions, INode } from 'n8n-workflow';
 
 export const BASE_URL = 'https://api.gluecrawl.ai';

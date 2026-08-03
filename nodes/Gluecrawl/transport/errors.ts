@@ -22,8 +22,8 @@
  * catches it and re-throws `new NodeApiError(node, error)`. So in a real n8n
  * runtime the value this module receives is ALWAYS a `NodeApiError`, and a
  * blanket "already a NodeApiError, leave it alone" short-circuit would disable
- * this entire module — every code-specific message, including the corrected
- * `plan_required` copy, and both `isGluecrawlErrorCode` call sites in the
+ * this entire module — every code-specific message, and both
+ * `isGluecrawlErrorCode` call sites in the
  * trigger. That wrapper keeps the parsed response body on `context.data` and
  * the status on `httpCode`, both of which are probed below.
  *
@@ -119,8 +119,8 @@ function headerValue(headers: unknown, name: string): string | undefined {
  * Item: Download CSV asks the transport for `encoding: 'arraybuffer'`, and axios
  * decodes the FAILURE body with the same `responseType` as a success body. So on
  * that one operation `response.data` is a Buffer holding the JSON error envelope
- * rather than the parsed object, and without this every mapped message — the
- * corrected `plan_required` copy included — degrades to the generic fallback.
+ * rather than the parsed object, and without this every mapped message degrades
+ * to the generic fallback.
  */
 function decodeBinaryBody(value: unknown): string | undefined {
 	if (value instanceof ArrayBuffer) return Buffer.from(value).toString('utf8');
@@ -293,13 +293,7 @@ interface Explanation {
 	description: string;
 }
 
-/**
- * Actionable copy per error code.
- *
- * `plan_required` deliberately does NOT echo the API's message: the API says
- * "requires a Starter plan or higher", but Starter has `allows_api = false`, so
- * repeating it sends users to buy a plan that still cannot call the API.
- */
+/** Actionable copy per error code. */
 function explain(info: GluecrawlApiErrorInfo): Explanation {
 	const { code, apiMessage, extras, statusCode, retryAfter } = info;
 
@@ -319,8 +313,8 @@ function explain(info: GluecrawlApiErrorInfo): Explanation {
 
 		case 'plan_required':
 			return {
-				message: 'The Gluecrawl API requires a Pro or Enterprise plan',
-				description: `This account's plan does not include API access. Starter does not either, despite what the API response says — upgrade to Pro or Enterprise at ${UPGRADE_URL}.`,
+				message: 'The Gluecrawl account is on a plan without API access',
+				description: `${apiMessage} Upgrade the account at ${UPGRADE_URL}, then retry.`,
 			};
 
 		case 'insufficient_credits':

@@ -29,9 +29,7 @@ export const SIGNATURE_HEADER = 'x-gluecrawl-signature';
  */
 export const SIGNATURE_TOLERANCE_SECONDS = 300;
 
-export type SignatureVerdict =
-	| { ok: true }
-	| { ok: false; reason: string };
+export type SignatureVerdict = { ok: true } | { ok: false; reason: string };
 
 function parseHeader(headerValue: string): { timestamp?: string; signature?: string } {
 	const parts: { timestamp?: string; signature?: string } = {};

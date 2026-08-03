@@ -17,8 +17,8 @@ The package ships two node classes:
 
 ## Requirements: the plan gate
 
-**Gluecrawl API keys are available on the Pro and Enterprise plans only.** Lower plans can use
-the dashboard but cannot mint an API key, and without a key these nodes cannot authenticate.
+**Gluecrawl API keys are available on every paid plan — Starter and above.** The Free plan can
+use the dashboard but cannot mint an API key, and without a key these nodes cannot authenticate.
 
 - One **active key per account**. Creating a new key revokes the previous one immediately —
   rotate deliberately, since every workflow using the old key starts failing with
@@ -27,7 +27,7 @@ the dashboard but cannot mint an API key, and without a key these nodes cannot a
 - The account's email address must be verified and the account must be active.
 
 If you see a `403` telling you your plan does not include API access, that is this gate. Upgrade
-to Pro or Enterprise at [gluecrawl.ai/pricing](https://www.gluecrawl.ai/pricing).
+to a paid plan at [gluecrawl.ai/pricing](https://www.gluecrawl.ai/pricing).
 
 ---
 

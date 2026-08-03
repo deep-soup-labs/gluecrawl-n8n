@@ -145,7 +145,7 @@ describe('gluecrawlApiRequest', () => {
 				itemIndex: 2,
 			}),
 		).rejects.toMatchObject({
-			message: 'The Gluecrawl API requires a Pro or Enterprise plan',
+			message: 'The Gluecrawl account is on a plan without API access',
 			httpCode: '403',
 			description: expect.stringContaining('While retrieving the job.'),
 		});

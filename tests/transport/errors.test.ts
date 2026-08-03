@@ -67,23 +67,19 @@ describe('every documented error code is mapped', () => {
 		expect(error.message).toContain('email');
 		expect(error.description).toMatch(/verification email/i);
 		// Nothing about plans: telling a user to upgrade here wastes money.
-		expect(error.description).not.toMatch(/Pro or Enterprise/);
+		expect(error.description).not.toMatch(/upgrade/i);
 	});
 
-	it('403 plan_required emits OUR wording and never leaks "Starter plan or higher"', () => {
-		// The exact string the API sends today. It is wrong: Starter has
-		// allows_api = false, so a user who follows it buys a plan that still
-		// cannot call the API. This assertion is the reason the mapper exists.
+	it('403 plan_required echoes the API message and adds the upgrade URL', () => {
+		// API access starts at Starter, so the API's own wording is correct and is
+		// passed through — naming a plan here would be a second place to keep in
+		// sync with `gluecrawl_schemas.plans`.
 		const upstream = 'This endpoint requires a Starter plan or higher.';
 		const error = mapped(403, 'plan_required', upstream);
 
-		expect(error.message).toBe('The Gluecrawl API requires a Pro or Enterprise plan');
-		expect(error.description).toContain('Pro or Enterprise');
+		expect(error.message).toBe('The Gluecrawl account is on a plan without API access');
+		expect(error.description).toContain(upstream);
 		expect(error.description).toContain('https://www.gluecrawl.ai/pricing');
-
-		expect(error.message).not.toContain('Starter plan or higher');
-		expect(error.description).not.toContain('Starter plan or higher');
-		expect(`${error.message} ${error.description}`).not.toMatch(/requires a Starter/);
 	});
 
 	it('402 insufficient_credits keeps the API message and explains when charging happens', () => {
@@ -110,7 +106,7 @@ describe('every documented error code is mapped', () => {
 		expect(error.description).toMatch(/NEW job/);
 	});
 
-	it('409 job_limit_reached is mapped even though Pro and Enterprise cannot hit it', () => {
+	it('409 job_limit_reached tells the user how to free a slot', () => {
 		const error = mapped(409, 'job_limit_reached', 'Active job limit reached.');
 
 		expect(error.message).toContain('limit');
@@ -325,9 +321,9 @@ describe('binary error bodies', () => {
 			),
 		);
 
-		// The correction users need most, on the one endpoint that lost it.
-		expect(error.message).toBe('The Gluecrawl API requires a Pro or Enterprise plan');
-		expect(error.description).not.toContain('Starter plan or higher');
+		// The mapped copy users need most, on the one endpoint that lost it.
+		expect(error.message).toBe('The Gluecrawl account is on a plan without API access');
+		expect(error.description).toContain('This endpoint requires a Starter plan or higher.');
 	});
 
 	it('keeps the error code reachable through a binary body', () => {
@@ -391,7 +387,7 @@ describe('error decoration', () => {
 		const second = toGluecrawlApiError(NODE, first, { context: 'While starting a run' });
 
 		expect(second).toBe(first);
-		expect(second.description).toContain('Pro or Enterprise');
+		expect(second.description).toContain('This endpoint requires a Starter plan or higher.');
 	});
 
 	it('produces a NodeApiError for every input shape', () => {
@@ -436,7 +432,7 @@ describe('failures already wrapped by n8n-core', () => {
 		return new NodeApiError(NODE, new AxiosError(status, data) as unknown as JsonObject);
 	}
 
-	it('still emits the corrected plan_required copy', () => {
+	it('still emits the mapped plan_required copy', () => {
 		const error = toGluecrawlApiError(
 			NODE,
 			coreWrapped(403, {
@@ -447,9 +443,9 @@ describe('failures already wrapped by n8n-core', () => {
 			}),
 		);
 
-		expect(error.message).toBe('The Gluecrawl API requires a Pro or Enterprise plan');
-		expect(error.description).toContain('Pro or Enterprise');
-		expect(error.description).not.toContain('Starter plan or higher');
+		expect(error.message).toBe('The Gluecrawl account is on a plan without API access');
+		expect(error.description).toContain('This endpoint requires a Starter plan or higher.');
+		expect(error.description).toContain('https://www.gluecrawl.ai/pricing');
 		expect(error.httpCode).toBe('403');
 	});
 

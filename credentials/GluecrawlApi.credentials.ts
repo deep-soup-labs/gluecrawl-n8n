@@ -29,7 +29,7 @@ export class GluecrawlApi implements ICredentialType {
 			default: '',
 			required: true,
 			description:
-				'Your Gluecrawl API key. API access requires a Pro or Enterprise plan; an account has one active key at a time, minted in the Gluecrawl dashboard under Settings. Rotating the key in the dashboard invalidates the old one immediately.',
+				'Your Gluecrawl API key. API access requires a Starter plan or above; an account has one active key at a time, minted in the Gluecrawl dashboard under Settings. Rotating the key in the dashboard invalidates the old one immediately.',
 		},
 		{
 			displayName: 'Base URL',
@@ -56,9 +56,9 @@ export class GluecrawlApi implements ICredentialType {
 	 * read stands in for one. `limit=1` keeps it to a single row.
 	 *
 	 * The rules translate the two failures a correct-looking key still produces —
-	 * an unverified account, and a plan without API access. The API's own
-	 * `plan_required` message names Starter, which cannot call the API either, so
-	 * it is deliberately not surfaced here.
+	 * an unverified account, and a plan without API access. Both arrive as a 403,
+	 * so the rule has to name both causes; upgrading a plan does not fix an
+	 * unverified email address.
 	 *
 	 * The base URL is normalised the same way `buildUrl` in the transport does —
 	 * trailing slashes and an already-present `/v1` are both stripped. Without
@@ -86,7 +86,7 @@ export class GluecrawlApi implements ICredentialType {
 				properties: {
 					value: 403,
 					message:
-						'The key was recognised but the account cannot use the API. Either its email address is unverified, or its plan does not include API access — that requires Pro or Enterprise.',
+						'The key was recognised but the account cannot use the API. Either its email address is unverified, or its plan does not include API access — that requires Starter or above.',
 				},
 			},
 		],
