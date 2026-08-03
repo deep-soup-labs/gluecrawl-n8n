@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Lint, build and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # The community-nodes ruleset encodes most of the n8n Cloud verification
+      # checklist, so lint failures are release blockers, not style noise.
+      - run: npm run lint
+
+      - run: npm run format:check
+
+      - run: npm run build
+
+      - run: npm test
+
+      # `npm run lint` is NOT a substitute: the scan adds
+      # eslint-plugin-n8n-nodes-base and ignores inline eslint-disable comments,
+      # so it catches verification blockers (icon format, parameter copy) that
+      # the local config cannot see. It also lints the packed tarball, because
+      # provenance pins the source commit, not the build output.
+      - run: npm run scan
