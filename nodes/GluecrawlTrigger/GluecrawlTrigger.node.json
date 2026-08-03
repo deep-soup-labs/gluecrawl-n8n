@@ -1,0 +1,22 @@
+{
+  "node": "n8n-nodes-gluecrawl.gluecrawlTrigger",
+  "nodeVersion": "1.0",
+  "codexVersion": "1.0",
+  "categories": ["Data & Storage", "Development"],
+  "subcategories": {
+    "Data & Storage": ["Web Scraping"]
+  },
+  "alias": ["Gluecrawl", "Scraping", "Crawler", "Webhook", "Run Completed"],
+  "resources": {
+    "credentialDocumentation": [
+      {
+        "url": "https://www.gluecrawl.ai/docs"
+      }
+    ],
+    "primaryDocumentation": [
+      {
+        "url": "https://www.gluecrawl.ai/docs"
+      }
+    ]
+  }
+}

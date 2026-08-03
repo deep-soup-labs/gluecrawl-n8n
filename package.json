@@ -1,0 +1,77 @@
+{
+  "name": "n8n-nodes-gluecrawl",
+  "version": "0.1.0",
+  "description": "n8n community nodes for Gluecrawl — agentic web scraping. Create jobs from a plain-English goal, start runs, pull structured rows, and trigger workflows on run completion.",
+  "license": "MIT",
+  "author": {
+    "name": "Deep Soup Labs",
+    "email": "support@gluecrawl.ai",
+    "url": "https://www.gluecrawl.ai"
+  },
+  "homepage": "https://www.gluecrawl.ai",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deep-soup-labs/n8n-nodes-gluecrawl.git"
+  },
+  "bugs": {
+    "url": "https://github.com/deep-soup-labs/n8n-nodes-gluecrawl/issues"
+  },
+  "keywords": [
+    "n8n-community-node-package",
+    "n8n",
+    "gluecrawl",
+    "scraping",
+    "web-scraping",
+    "crawler",
+    "data-extraction"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/GluecrawlApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/Gluecrawl/Gluecrawl.node.js",
+      "dist/nodes/GluecrawlTrigger/GluecrawlTrigger.node.js"
+    ]
+  },
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "rimraf dist && tsc && node scripts/copy-assets.js",
+    "dev": "tsc --watch",
+    "lint": "eslint credentials nodes tests index.ts",
+    "lint:fix": "eslint credentials nodes tests index.ts --fix",
+    "format": "prettier --write \"**/*.{ts,js,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,js,json,md}\"",
+    "typecheck": "tsc --noEmit",
+    "scan": "node scripts/scan.mjs",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  },
+  "devDependencies": {
+    "@n8n/eslint-plugin-community-nodes": "^0.27.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.15.0",
+    "eslint": "9.29.0",
+    "jest": "^30.0.0",
+    "n8n-workflow": "^2.16.0",
+    "nock": "^14.0.0",
+    "prettier": "^3.6.0",
+    "rimraf": "^6.0.0",
+    "ts-jest": "^29.4.0",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.35.0"
+  }
+}
