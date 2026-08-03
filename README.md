@@ -321,7 +321,7 @@ To try the nodes in a real editor, build and link the package into your n8n user
 ```bash
 npm run build
 mkdir -p ~/.n8n/nodes
-cd ~/.n8n/nodes && npm install /absolute/path/to/n8n-nodes-gluecrawl
+cd ~/.n8n/nodes && npm install /absolute/path/to/gluecrawl-n8n
 ```
 
 Restart n8n and the nodes appear in the panel.
@@ -352,7 +352,7 @@ locally** — a local publish produces an unattested tarball.
 
 - Gluecrawl product and account questions: [gluecrawl.ai](https://www.gluecrawl.ai)
 - Bugs and feature requests for these nodes:
-  [GitHub issues](https://github.com/deep-soup-labs/n8n-nodes-gluecrawl/issues)
+  [GitHub issues](https://github.com/deep-soup-labs/gluecrawl-n8n/issues)
 
 ## License
 
