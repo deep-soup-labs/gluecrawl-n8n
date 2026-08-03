@@ -244,4 +244,71 @@ describe('item: getMany', () => {
 		expect(result[0].json.run_id).toBe(RUN_ID);
 		expect(result[0].pairedItem).toEqual({ item: 0 });
 	});
+
+	describe('job scope check', () => {
+		const JOB_ID = '8f4a2c1e-0b7d-4a19-9c3f-6d5e2a1b8c04';
+
+		it('spends no request when no job is selected', async () => {
+			// Nothing to compare the run against, so the guard must not cost a
+			// round trip. This is also the shape of a run id supplied on its own
+			// through an expression.
+			nock(BASE_URL)
+				.get(`/v1/runs/${RUN_ID}/items`)
+				.query(true)
+				.reply(200, page(0, 1, 1));
+
+			const ctx = createExecuteContext({
+				parameters: { runId: RUN_ID, returnAll: true, simplify: true },
+			});
+			await execute.call(ctx as unknown as IExecuteFunctions, 0);
+
+			expect(ctx.calls).toHaveLength(1);
+			expect(ctx.calls[0].path).toBe(`/v1/runs/${RUN_ID}/items`);
+		});
+
+		it('verifies the run against the job before reading any rows', async () => {
+			nock(BASE_URL).get(`/v1/runs/${RUN_ID}`).reply(200, {
+				id: RUN_ID,
+				job_id: JOB_ID,
+				status: 'completed',
+				created_at: '2026-01-01T00:00:00Z',
+			});
+			nock(BASE_URL)
+				.get(`/v1/runs/${RUN_ID}/items`)
+				.query(true)
+				.reply(200, page(0, 1, 1));
+
+			const ctx = createExecuteContext({
+				parameters: { runId: RUN_ID, jobId: JOB_ID, returnAll: true, simplify: true },
+			});
+			const result = await execute.call(ctx as unknown as IExecuteFunctions, 0);
+
+			// Order matters: the check has to precede the read, or a mismatched run
+			// still gets paged through before anyone notices.
+			expect(ctx.calls.map((call) => call.path)).toEqual([
+				`/v1/runs/${RUN_ID}`,
+				`/v1/runs/${RUN_ID}/items`,
+			]);
+			expect(result).toHaveLength(1);
+		});
+
+		it('refuses to read rows belonging to a different job', async () => {
+			nock(BASE_URL).get(`/v1/runs/${RUN_ID}`).reply(200, {
+				id: RUN_ID,
+				job_id: 'a-different-job',
+				status: 'completed',
+				created_at: '2026-01-01T00:00:00Z',
+			});
+
+			const ctx = createExecuteContext({
+				parameters: { runId: RUN_ID, jobId: JOB_ID, returnAll: true, simplify: true },
+			});
+			await expect(execute.call(ctx as unknown as IExecuteFunctions, 0)).rejects.toThrow(
+				/belongs to job a-different-job/,
+			);
+
+			// The items endpoint must never have been reached.
+			expect(ctx.calls).toHaveLength(1);
+		});
+	});
 });

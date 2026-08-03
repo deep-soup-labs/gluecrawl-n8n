@@ -17,36 +17,26 @@ import type {
 import { toGluecrawlApiError } from '../../transport/errors';
 import { gluecrawlApiRequestAllItems } from '../../transport/pagination';
 import { MAX_PAGE_SIZE_ITEMS, type Item } from '../../types';
+import { jobScopeLocator, runLocator } from '../locators';
+import { assertRunInJob } from '../runScope';
 import { errorOutputItem } from '../shared';
 
+const showFor = { resource: ['item'], operation: ['getMany'] };
+
 export const description: INodeProperties[] = [
+	{ ...jobScopeLocator(), displayOptions: { show: showFor } },
 	{
-		displayName: 'Run ID',
-		name: 'runId',
-		type: 'string',
-		default: '',
-		required: true,
-		placeholder: 'e.g. 8f14e45f-ceea-467a-9c1b-2a6b3f2b7c10',
-		displayOptions: {
-			show: {
-				resource: ['item'],
-				operation: ['getMany'],
-			},
-		},
-		description:
-			'ID of the run to read rows from. Returned by Job: Create and Run: Start, and by the Gluecrawl Trigger on a run event. Rows appear progressively while a run is still scraping, so a run that has not completed yet returns the pages extracted so far.',
+		...runLocator(
+			'The run to read rows from. Returned by Job: Create and Run: Start, and by the Gluecrawl Trigger on a run event. Rows appear progressively while a run is still scraping, so a run that has not completed yet returns the pages extracted so far.',
+		),
+		displayOptions: { show: showFor },
 	},
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		default: true,
-		displayOptions: {
-			show: {
-				resource: ['item'],
-				operation: ['getMany'],
-			},
-		},
+		displayOptions: { show: showFor },
 		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
@@ -55,13 +45,7 @@ export const description: INodeProperties[] = [
 		type: 'number',
 		default: 50,
 		typeOptions: { minValue: 1 },
-		displayOptions: {
-			show: {
-				resource: ['item'],
-				operation: ['getMany'],
-				returnAll: [false],
-			},
-		},
+		displayOptions: { show: { ...showFor, returnAll: [false] } },
 		description: 'Max number of results to return',
 	},
 	{
@@ -69,12 +53,7 @@ export const description: INodeProperties[] = [
 		name: 'simplify',
 		type: 'boolean',
 		default: true,
-		displayOptions: {
-			show: {
-				resource: ['item'],
-				operation: ['getMany'],
-			},
-		},
+		displayOptions: { show: showFor },
 		description:
 			"Whether each output item should be the extracted row itself, with the job's columns as top-level fields. Turn this off to wrap the row as {data, page_number, item_index} and keep the page it came from and its position on that page.",
 	},
@@ -84,11 +63,20 @@ export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	const runId = (this.getNodeParameter('runId', index) as string).trim();
+	const runId = (
+		this.getNodeParameter('runId', index, '', { extractValue: true }) as string
+	).trim();
+	const jobId = (
+		this.getNodeParameter('jobId', index, '', { extractValue: true }) as string
+	).trim();
 	const returnAll = this.getNodeParameter('returnAll', index, true) as boolean;
 	const simplify = this.getNodeParameter('simplify', index, true) as boolean;
 
 	try {
+		// One extra unmetered read so a run left over from a previously selected
+		// job fails loudly instead of returning another job's rows.
+		await assertRunInJob.call(this, runId, jobId, index, `While reading items for run ${runId}`);
+
 		// A capped read still paginates: the user's Limit is independent of the
 		// endpoint's 500-row page ceiling, so it may span several requests.
 		const limit = returnAll ? undefined : (this.getNodeParameter('limit', index, 50) as number);

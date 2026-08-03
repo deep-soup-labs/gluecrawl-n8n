@@ -141,6 +141,33 @@ function resolveParameter(
 	return current === undefined ? fallback : current;
 }
 
+/**
+ * A stored `resourceLocator` value, as n8n persists it on the node.
+ *
+ * Tests set `jobId`/`runId` either as a bare string (what an expression or an
+ * older workflow yields) or through `resourceLocatorValue`. Both must reach the
+ * operation as the same plain id, which is exactly what `extractValue: true`
+ * promises, so the mock has to model the object shape rather than only the
+ * string one.
+ */
+export function resourceLocatorValue(value: string, mode: 'list' | 'id' = 'list') {
+	return { __rl: true, mode, value };
+}
+
+function isResourceLocator(value: unknown): value is { __rl: true; value: unknown } {
+	return typeof value === 'object' && value !== null && (value as { __rl?: unknown }).__rl === true;
+}
+
+/**
+ * `getNodeParameter`'s `extractValue` option: unwraps a resource locator, and
+ * passes anything else through untouched (n8n does the same, which is what
+ * makes the option safe to apply to a parameter that arrived as a plain string).
+ */
+function applyExtractValue(value: unknown, options?: { extractValue?: boolean }): unknown {
+	if (options?.extractValue !== true) return value;
+	return isResourceLocator(value) ? value.value : value;
+}
+
 /** Error shape n8n's axios-based httpRequest throws on a non-2xx response. */
 interface HttpErrorLike {
 	message: string;
@@ -284,9 +311,40 @@ export function createExecuteContext(options: MockContextOptions = {}) {
 	return {
 		...base,
 		getInputData: jest.fn(() => [{ json: {} }]),
-		getNodeParameter: jest.fn((name: string, _itemIndex: number, fallback?: unknown) =>
-			resolveParameter(parameters, name, fallback),
+		getNodeParameter: jest.fn(
+			(
+				name: string,
+				_itemIndex: number,
+				fallback?: unknown,
+				options?: { extractValue?: boolean },
+			) => applyExtractValue(resolveParameter(parameters, name, fallback), options),
 		),
+	};
+}
+
+/**
+ * `ILoadOptionsFunctions` stand-in for the Job and Run pickers.
+ *
+ * Edit-time context: there is no input data and no item index, and sibling
+ * fields are read through `getCurrentNodeParameter` rather than
+ * `getNodeParameter` — that difference is the whole reason the Run picker can
+ * see which job is selected, so the mock keeps the two methods distinct instead
+ * of aliasing them.
+ */
+export function createLoadOptionsContext(options: MockContextOptions = {}) {
+	const parameters = options.parameters ?? {};
+	const base = baseContext(options);
+
+	return {
+		...base,
+		getNodeParameter: jest.fn(
+			(name: string, fallback?: unknown, opts?: { extractValue?: boolean }) =>
+				applyExtractValue(resolveParameter(parameters, name, fallback), opts),
+		),
+		getCurrentNodeParameter: jest.fn((name: string, opts?: { extractValue?: boolean }) =>
+			applyExtractValue(resolveParameter(parameters, name, undefined), opts),
+		),
+		getCurrentNodeParameters: jest.fn(() => parameters),
 	};
 }
 
@@ -338,3 +396,4 @@ export function createHookContext(options: MockContextOptions = {}) {
 
 export type ExecuteContext = ReturnType<typeof createExecuteContext>;
 export type HookContext = ReturnType<typeof createHookContext>;
+export type LoadOptionsContext = ReturnType<typeof createLoadOptionsContext>;

@@ -17,6 +17,7 @@ import {
 	BASE_URL,
 	createExecuteContext,
 	rejectionOf,
+	resourceLocatorValue,
 	useNock,
 	type ExecuteContext,
 } from '../helpers';
@@ -81,6 +82,77 @@ describe('Run: Get', () => {
 		await getRun.call(asExecute(context), 0);
 
 		expect(context.calls[0].path).toBe('/v1/runs/run-1');
+		scope.done();
+	});
+
+	it('resolves a run picked from the list, not just one typed as an ID', async () => {
+		// The picker stores {__rl, mode, value}; the operation must see the bare
+		// id. Both shapes have to reach the same path or the two modes of the
+		// same field would behave differently.
+		const scope = nock(BASE_URL).get('/v1/runs/run-1').reply(200, run('run-1'));
+
+		const context = createExecuteContext({
+			parameters: { runId: resourceLocatorValue('run-1') },
+		});
+		await getRun.call(asExecute(context), 0);
+
+		expect(context.calls[0].path).toBe('/v1/runs/run-1');
+		scope.done();
+	});
+
+	it('keys the request on the run alone, never sending the Job', async () => {
+		// If the job ever leaked into the request path, a stale Job value would
+		// start changing WHICH run is fetched rather than being caught below.
+		const scope = nock(BASE_URL).get('/v1/runs/run-1').reply(200, run('run-1'));
+
+		const context = createExecuteContext({
+			parameters: {
+				jobId: resourceLocatorValue('job-1'),
+				runId: resourceLocatorValue('run-1'),
+			},
+		});
+		await getRun.call(asExecute(context), 0);
+
+		// One request, and the scope check rode along on it for free.
+		expect(context.calls).toHaveLength(1);
+		expect(context.calls[0].path).toBe('/v1/runs/run-1');
+		scope.done();
+	});
+
+	it('rejects a run left over from a previously selected job', async () => {
+		// n8n refreshes the run LIST when the Job changes but does not clear the
+		// already-selected run (verified against n8n 2.32.7), so the two drift
+		// apart in the panel. Silently returning another job's run is the one
+		// outcome worth failing over: the result would look entirely legitimate.
+		const scope = nock(BASE_URL).get('/v1/runs/run-1').reply(200, run('run-1'));
+
+		const context = createExecuteContext({
+			parameters: {
+				jobId: resourceLocatorValue('job-99'),
+				runId: resourceLocatorValue('run-1'),
+			},
+		});
+		const error = await rejectionOf(getRun.call(asExecute(context), 0));
+
+		expect(error.message).toBe(
+			'The selected run belongs to job job-1, not to the selected job job-99',
+		);
+		expect(String(error.description)).toContain('Re-pick the run');
+		scope.done();
+	});
+
+	it('does not fail when the job is left empty', async () => {
+		// Nothing to compare against is not a mismatch. The field is required, so
+		// n8n blocks the empty case first; failing here would only replace a clear
+		// message with a confusing one.
+		const scope = nock(BASE_URL).get('/v1/runs/run-1').reply(200, run('run-1'));
+
+		const context = createExecuteContext({
+			parameters: { jobId: resourceLocatorValue(''), runId: resourceLocatorValue('run-1') },
+		});
+		const result = await getRun.call(asExecute(context), 0);
+
+		expect(result[0].json.id).toBe('run-1');
 		scope.done();
 	});
 
