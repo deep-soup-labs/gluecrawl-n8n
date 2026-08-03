@@ -271,7 +271,7 @@ describe('bodies that are not the contract', () => {
 });
 
 /**
- * Item: Download CSV is the only operation that asks for `encoding:
+ * Run: Download CSV is the only operation that asks for `encoding:
  * 'arraybuffer'`, and axios decodes a FAILURE body with the same `responseType`
  * as a success body. So on that endpoint — and only there — the error envelope
  * arrives as bytes. Unparsed, every code-specific message on the CSV export

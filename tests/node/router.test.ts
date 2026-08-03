@@ -3,7 +3,7 @@
  *
  * The safety net is not decorative. Five operations read their first parameter
  * OUTSIDE their own try block (`run/get`, `run/start`, `run/getMany`,
- * `item/getMany`, `item/downloadCsv`), so a failing expression on that
+ * `run/getItems`, `run/downloadCsv`), so a failing expression on that
  * parameter — `={{ $json.run.id }}` against an item with no `run` key — is
  * caught here rather than by the operation. Whatever this branch emits is
  * therefore a real error-output shape a user's Switch node has to match, and it
@@ -78,12 +78,33 @@ describe('Gluecrawl router', () => {
 		// Not a data problem: no input item could make the combination valid, so
 		// continueOnFail deliberately does not apply.
 		const ctx = createExecuteContext({
-			parameters: { resource: 'run', operation: 'downloadCsv' },
+			parameters: { resource: 'run', operation: 'create' },
 			continueOnFail: true,
 		});
 
 		const error = await rejectionOf(node.execute.call(ctx as unknown as IExecuteFunctions));
 
 		expect(error.message).toContain('is not supported on the "run" resource');
+	});
+
+	it('serves the row-reading operations off the Run resource', () => {
+		// The rows used to live under an "item" resource. `/v1` has no item entity
+		// to address — every row endpoint is keyed on a run — so a workflow that
+		// still names it must fail loudly rather than dispatch somewhere plausible.
+		const resources = (
+			(node.description.properties.find((property) => property.name === 'resource')?.options ??
+				[]) as Array<{ value: string }>
+		).map((option) => option.value);
+
+		expect(resources).toEqual(['job', 'run']);
+
+		const runOperations = (
+			(node.description.properties.find(
+				(property) =>
+					property.name === 'operation' && property.displayOptions?.show?.resource?.includes('run'),
+			)?.options ?? []) as Array<{ value: string }>
+		).map((option) => option.value);
+
+		expect(runOperations).toEqual(['downloadCsv', 'get', 'getItems', 'getMany', 'start']);
 	});
 });

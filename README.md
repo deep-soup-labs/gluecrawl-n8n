@@ -4,12 +4,13 @@ n8n community nodes for [Gluecrawl](https://www.gluecrawl.ai) — agentic web sc
 
 Point Gluecrawl at a URL and describe what you want in plain English, or name the columns
 yourself. Gluecrawl's mapper agents work out the selectors and pagination once, then every
-later run replays that config deterministically. This package exposes that Job → Run → Items
+later run replays that config deterministically. This package exposes that Job → Run → rows
 model as n8n operations, plus a webhook trigger that fires when a run finishes.
 
 The package ships two node classes:
 
-- **Gluecrawl** — the action node (jobs, runs, items). Also available to AI Agents as a tool.
+- **Gluecrawl** — the action node (jobs, runs, and the rows a run extracted). Also available to
+  AI Agents as a tool.
 - **Gluecrawl Trigger** — a webhook trigger for `run.completed`, `run.failed`, `job.ready`
   and `job.failed`.
 
@@ -86,8 +87,13 @@ the action directly; there is no need to drop the node and then hunt through dro
 | **Run**  | Start        | `POST /v1/jobs/{id}/runs`     | Reruns a `ready` job against its cached mapper config — no LLM work, no upfront charge, cost settled after completion. Optional **Max Pages** override. Waits for the run to finish by default.                                                                                             |
 | Run      | Get          | `GET /v1/runs/{id}`           | Status, item and page counts, credits used, billing breakdown.                                                                                                                                                                                                                              |
 | Run      | Get Many     | `GET /v1/jobs/{id}/runs`      | Run history for one job, paginated.                                                                                                                                                                                                                                                         |
-| **Item** | Get Many     | `GET /v1/runs/{id}/items`     | One n8n item per scraped row: the row's `data` plus `page_number` and `item_index`. Return All auto-paginates at the API maximum of 500 rows per request.                                                                                                                                   |
-| Item     | Download CSV | `GET /v1/runs/{id}/items/csv` | The run's rows as a CSV file on the item's binary property — ready for Gmail, Drive or S3 nodes.                                                                                                                                                                                            |
+| Run      | Get Items    | `GET /v1/runs/{id}/items`     | One n8n item per scraped row: the row's `data` plus `page_number` and `item_index`. Return All auto-paginates at the API maximum of 500 rows per request.                                                                                                                                   |
+| Run      | Download CSV | `GET /v1/runs/{id}/items/csv` | The run's rows as a CSV file on the item's binary property — ready for Gmail, Drive or S3 nodes.                                                                                                                                                                                            |
+
+The rows a scrape produced are **operations on Run**, not a resource of their own. `/v1` has no
+item entity to address — every row endpoint is keyed on a run, rows carry no id, and reading is
+the only thing you can do with one — so a separate resource only made you pick the same Run
+twice under two different names.
 
 ### Picking jobs and runs
 
@@ -104,7 +110,7 @@ Jobs are listed as `host - status` (a leading `www.` is dropped), runs as
 `failed` / `stale` are terminal — those need a new job, not a retry. Two jobs against the same
 host with the same status look identical in the list; pick by ID if you keep several.
 
-`Run: Get`, `Item: Get Many` and `Item: Download CSV` ask for a **Job** as well as a **Run**. The
+`Run: Get`, `Run: Get Items` and `Run: Download CSV` ask for a **Job** as well as a **Run**. The
 job is what scopes the run list — `/v1` lists runs only under a job. It is not sent to the API,
 which identifies the run by its ID alone. Every Gluecrawl output that carries a run ID carries
 the job ID beside it (`Run: Start` returns `job_id` on the run, `Job: Create` returns the job
@@ -123,7 +129,7 @@ Two shapes are contracts rather than incidental details, because workflows branc
 **Scraped rows.** Job: Create (with row output on) and Run: Start emit the same keys: the
 row's extracted columns, plus `run_id`, `page_number` and `item_index`. Those three are written
 last, so they win a name clash with a column of the same name — a downstream node correlating
-on `run_id` has to be able to trust it. Use Item: Get Many with **Simplify** on if you need the
+on `run_id` has to be able to trust it. Use Run: Get Items with **Simplify** on if you need the
 raw, un-merged row instead.
 
 **Continue On Fail.** Every operation on every resource emits the same error item: `error`
@@ -205,7 +211,7 @@ reactivate the workflow to register an endpoint it owns.
 
 After verifying, the node fetches the referenced run (or job) from `/v1` and emits the API's
 response rather than the bare payload. That is now purely for convenience — payloads carry only
-ids and statuses, and the next node (usually **Item: Get Many**) wants the record.
+ids and statuses, and the next node (usually **Run: Get Items**) wants the record.
 
 A `webhook.test` delivery is emitted as a clearly marked test item (`test: true`), so you can
 confirm the wiring end to end without running a scrape. The node does not send one itself:
@@ -234,18 +240,18 @@ against a local n8n needs a public tunnel (see Local development).
 
 ### A. Scheduled refresh
 
-**Schedule Trigger → Gluecrawl (Run: Start) → Gluecrawl (Item: Get Many) → Google Sheets.**
+**Schedule Trigger → Gluecrawl (Run: Start) → Gluecrawl (Run: Get Items) → Google Sheets.**
 
 Run an existing `ready` job on n8n's clock. Because the job is already mapped there is no LLM
 work and no upfront charge — the run replays the cached config. Leave waiting enabled so the
-Item step sees a completed run, then dedupe on a stable key before appending rows.
+Get Items step sees a completed run, then dedupe on a stable key before appending rows.
 
 ### B. Event-driven pipeline
 
-**Gluecrawl Trigger (`run.completed`) → Gluecrawl (Item: Get Many) → transform → destination.**
+**Gluecrawl Trigger (`run.completed`) → Gluecrawl (Run: Get Items) → transform → destination.**
 
 No polling and no wasted executions: the workflow wakes only when a run actually finishes. The
-trigger's verified output already carries the run id, so the Item step just reads it.
+trigger's verified output already carries the run id, so the Get Items step just reads it.
 
 ### C. On-demand scrape
 
@@ -265,7 +271,7 @@ this package.
 **A wait timeout does not cancel the run.** The wait options on Job: Create and Run: Start poll
 the API; they do not control it. `/v1` has no cancel endpoint. When a wait exceeds its timeout
 the node fails with an error containing the run id, but **the run keeps executing on
-Gluecrawl's side and is still charged**. Recover it later with Run: Get / Item: Get Many using
+Gluecrawl's side and is still charged**. Recover it later with Run: Get / Run: Get Items using
 that id, or let the trigger pick up its completion. Raising the timeout is usually a better
 answer than retrying, because a retry starts a second billable run.
 
@@ -284,12 +290,12 @@ automatically; `502 enqueue_failed` is likewise refunded and is safe to retry.
 
 ### Rate limits
 
-| Endpoint group                               | Limit            |
-| -------------------------------------------- | ---------------- |
-| Job: Create                                  | 60 / minute      |
-| Run: Start                                   | 10 / minute      |
-| Webhook create / update / delete / test      | 10 / minute      |
-| All GET operations (Job/Run/Item reads, CSV) | not rate limited |
+| Endpoint group                                   | Limit            |
+| ------------------------------------------------ | ---------------- |
+| Job: Create                                      | 60 / minute      |
+| Run: Start                                       | 10 / minute      |
+| Webhook create / update / delete / test          | 10 / minute      |
+| All GET operations (job, run and row reads, CSV) | not rate limited |
 
 Exceeding a limit returns `429`; the node surfaces the `Retry-After` value in the error so a
 Wait node or n8n's own retry setting can honour it.

@@ -24,7 +24,6 @@ import {
 } from 'n8n-workflow';
 
 import { searchJobs, searchRuns } from './methods';
-import * as item from './resources/item';
 import * as job from './resources/job';
 import * as run from './resources/run';
 import { errorOutputItem } from './resources/shared';
@@ -47,13 +46,11 @@ const OPERATIONS: Record<string, Record<string, OperationExecute>> = {
 		getMany: job.getMany.execute,
 	},
 	run: {
+		downloadCsv: run.downloadCsv.execute,
 		get: run.get.execute,
+		getItems: run.getItems.execute,
 		getMany: run.getMany.execute,
 		start: run.start.execute,
-	},
-	item: {
-		downloadCsv: item.downloadCsv.execute,
-		getMany: item.getMany.execute,
 	},
 };
 
@@ -88,7 +85,7 @@ export class Gluecrawl implements INodeType {
 		usableAsTool: {
 			replacements: {
 				description:
-					'Scrape a website and get structured rows back. Job: Create is the expensive path — it charges the job-creation cost upfront, runs an LLM over the site to work out how to scrape it, and mints a job that stays on the account until deleted, so calling it in a loop accumulates both jobs and charges. Before creating a job, check Job: Get Many for an existing job on the same URL and re-scrape it with Run: Start, which reuses the cached config and skips the mapping cost. Keep Max Pages small (1 or 2) and raise it only if the rows come back incomplete. Item: Get Many reads the rows of a finished run and costs nothing. The run-scoped operations take both a Job and a Run: every Gluecrawl output carrying a run ID carries its job ID beside it, so read both from the same record rather than looking one up.',
+					'Scrape a website and get structured rows back. Job: Create is the expensive path — it charges the job-creation cost upfront, runs an LLM over the site to work out how to scrape it, and mints a job that stays on the account until deleted, so calling it in a loop accumulates both jobs and charges. Before creating a job, check Job: Get Many for an existing job on the same URL and re-scrape it with Run: Start, which reuses the cached config and skips the mapping cost. Keep Max Pages small (1 or 2) and raise it only if the rows come back incomplete. Run: Get Items reads the rows of a finished run and costs nothing. The run-scoped operations take both a Job and a Run: every Gluecrawl output carrying a run ID carries its job ID beside it, so read both from the same record rather than looking one up.',
 			},
 		},
 		properties: [
@@ -100,11 +97,6 @@ export class Gluecrawl implements INodeType {
 				default: 'job',
 				options: [
 					{
-						name: 'Item',
-						value: 'item',
-						description: 'The rows a run extracted',
-					},
-					{
 						name: 'Job',
 						value: 'job',
 						description: 'A saved URL plus what to extract from it, and its schedule',
@@ -112,13 +104,12 @@ export class Gluecrawl implements INodeType {
 					{
 						name: 'Run',
 						value: 'run',
-						description: 'One execution of a job against the site',
+						description: 'One execution of a job against the site, and the rows it extracted',
 					},
 				],
 			},
 			...job.jobDescription,
 			...run.description,
-			...item.description,
 		],
 	};
 

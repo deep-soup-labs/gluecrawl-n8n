@@ -116,7 +116,7 @@ function headerValue(headers: unknown, name: string): string | undefined {
 /**
  * Renders a binary body as text, or `undefined` when it is not binary.
  *
- * Item: Download CSV asks the transport for `encoding: 'arraybuffer'`, and axios
+ * Run: Download CSV asks the transport for `encoding: 'arraybuffer'`, and axios
  * decodes the FAILURE body with the same `responseType` as a success body. So on
  * that one operation `response.data` is a Buffer holding the JSON error envelope
  * rather than the parsed object, and without this every mapped message degrades
