@@ -13,6 +13,7 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { Gluecrawl } from '../../nodes/Gluecrawl/Gluecrawl.node';
+import { jobOperations } from '../../nodes/Gluecrawl/resources/job/job.description';
 import { createExecuteContext, rejectionOf } from '../helpers';
 import type { ExecuteContext } from '../helpers';
 
@@ -37,6 +38,12 @@ function failParameter(ctx: ExecuteContext, name: string): void {
 }
 
 describe('Gluecrawl router', () => {
+	it('does not expose job scheduling operations', () => {
+		const operationNames = (jobOperations.options ?? []).map((option) => option.name);
+
+		expect(operationNames).toEqual(['Create', 'Delete', 'Get', 'Get Many']);
+	});
+
 	it('emits the package-wide error keys when a parameter expression fails', async () => {
 		const ctx = createExecuteContext({
 			parameters: { resource: 'run', operation: 'get' },
