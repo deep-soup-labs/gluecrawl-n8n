@@ -260,13 +260,6 @@ export class GluecrawlTrigger implements INodeType {
 			'This workflow now receives Gluecrawl events. Every delivery is signature-checked before it reaches the next node.',
 		properties: [
 			{
-				displayName:
-					'Activating this trigger registers its own webhook endpoint on your Gluecrawl account, so several workflows can listen independently. Deliveries are signed and retried, and a delivery whose signature does not verify is rejected. Deactivating removes only an endpoint this node created.',
-				name: 'endpointNotice',
-				type: 'notice',
-				default: '',
-			},
-			{
 				displayName: 'Events',
 				name: 'events',
 				type: 'multiOptions',
