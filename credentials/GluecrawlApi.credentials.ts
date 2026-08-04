@@ -11,7 +11,7 @@ export class GluecrawlApi implements ICredentialType {
 
 	displayName = 'Gluecrawl API';
 
-	documentationUrl = 'https://www.gluecrawl.ai/docs';
+	documentationUrl = 'https://www.gluecrawl.ai/docs/api';
 
 	// Themed variants: the mark is a solid tile, so a single dark version would
 	// disappear into n8n's dark canvas.

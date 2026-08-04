@@ -28,7 +28,7 @@ use the dashboard but cannot mint an API key, and without a key these nodes cann
 - The account's email address must be verified and the account must be active.
 
 If you see a `403` telling you your plan does not include API access, that is this gate. Upgrade
-to a paid plan at [gluecrawl.ai/pricing](https://www.gluecrawl.ai/pricing).
+to a paid plan on the [Gluecrawl pricing page](https://www.gluecrawl.ai/#pricing).
 
 ---
 

@@ -35,7 +35,9 @@ import { NodeApiError, type IDataObject, type INode, type JsonObject } from 'n8n
 
 import type { FastApiValidationErrorBody, GluecrawlErrorBody } from '../types';
 
-const UPGRADE_URL = 'https://www.gluecrawl.ai/pricing';
+// Fallback only: envelope A's own `upgrade_url` wins whenever the API sends one.
+// Pricing is a section of the landing page, not a route of its own.
+const UPGRADE_URL = 'https://www.gluecrawl.ai/#pricing';
 const DASHBOARD_URL = 'https://www.gluecrawl.ai/dashboard';
 
 /** Longest raw-body excerpt embedded in a message when the body is not JSON. */
