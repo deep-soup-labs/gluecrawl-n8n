@@ -317,7 +317,7 @@ unattested tarball.
 
 ## Version history
 
-### Unreleased
+### 1.0.3
 
 - **Wait for Completion now honours execution cancellation.** Stopping a workflow — from the
   editor, a workflow timeout, or a queue-mode worker shutting down — previously left the poll
