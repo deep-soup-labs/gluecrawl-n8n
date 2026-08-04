@@ -1,6 +1,6 @@
 {
   "name": "@gluecrawl/n8n-nodes-gluecrawl",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "n8n community nodes for Gluecrawl — agentic web scraping. Create jobs from a plain-English goal, start runs, pull structured rows, and trigger workflows on run completion.",
   "license": "MIT",
   "author": {
