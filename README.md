@@ -336,8 +336,22 @@ Restart n8n and the nodes appear in the panel.
 
 **Testing the trigger locally needs a public URL.** Gluecrawl rejects webhook targets that are
 not https or that resolve to a private IP, so `http://localhost:5678/...` will be refused with
-`422 invalid_webhook_url`. Use a tunnel (`n8n start --tunnel`, or ngrok/Cloudflare Tunnel in
-front of n8n) so the registered URL is publicly reachable over https.
+`422 invalid_webhook_url`. This applies to "Test workflow" as much as to activation: n8n calls
+the same `create` hook for the `/webhook-test/` URL.
+
+`n8n start --tunnel` no longer works — n8n 2.0 removed the flag and **ignores it silently**, so
+the run looks normal while the webhook base URL stays `http://localhost:5678`. Put your own
+tunnel in front of n8n instead and tell n8n its public address:
+
+```bash
+cloudflared tunnel --url http://localhost:5678   # prints https://<name>.trycloudflare.com
+N8N_WEBHOOK_URL="https://<name>.trycloudflare.com" npx n8n start
+```
+
+`N8N_WEBHOOK_URL` is the n8n 2.x name for what used to be `WEBHOOK_URL`. n8n echoes the value
+back on startup ("Editor is now accessible via: ..."), which is the quickest way to confirm the
+node will register a public URL rather than a loopback one. A quick tunnel gets a fresh hostname
+every restart, so re-registering the trigger after a restart is expected.
 
 ---
 
