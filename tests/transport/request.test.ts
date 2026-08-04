@@ -50,10 +50,12 @@ describe('gluecrawlApiRequest', () => {
 	});
 
 	it('honours a custom base URL from the credential', async () => {
-		const scope = nock('https://staging-api.gluecrawl.ai').get('/v1/jobs').reply(200, { data: [] });
+		const scope = nock('https://gluecrawl.internal.example.com')
+			.get('/v1/jobs')
+			.reply(200, { data: [] });
 
 		const context = createExecuteContext({
-			credential: { baseUrl: 'https://staging-api.gluecrawl.ai/' },
+			credential: { baseUrl: 'https://gluecrawl.internal.example.com/' },
 		});
 		await gluecrawlApiRequest.call(asExecute(context), 'GET', '/v1/jobs');
 

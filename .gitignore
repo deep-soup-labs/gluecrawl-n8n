@@ -5,3 +5,9 @@ coverage/
 .env.*
 .DS_Store
 *.tsbuildinfo
+
+# Internal working notes. Kept on disk for local tooling, never published:
+# this repo is public and CLAUDE.md documents cross-repo behaviour that the
+# rest of the platform owns.
+CLAUDE.md
+.claude/
