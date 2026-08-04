@@ -155,10 +155,12 @@ run against one will keep returning `409 job_not_ready`. Create a new job instea
 ### AI Agent tool
 
 The action node sets `usableAsTool`, so an AI Agent can call it directly. The canonical agent
-call is **Job: Create** in goal mode with waiting and row output enabled: URL plus a
-plain-English goal in, structured rows out. Gluecrawl returns tabular JSON rather than a
+call is **Job: Create** in goal mode with `Wait for Completion` and row output turned on: URL
+plus a plain-English goal in, structured rows out. Gluecrawl returns tabular JSON rather than a
 Markdown blob, which is what makes the result usable by the next tool in the chain without a
-parsing step. Read the Costs and limits section before wiring an agent loop to it.
+parsing step. This is one of the few places worth turning the wait on — an agent has nowhere to
+put a job id it cannot resolve in the same call. Read the Costs and limits section before wiring
+an agent loop to it.
 
 ---
 
@@ -251,8 +253,9 @@ against a local n8n needs a public tunnel (see Local development).
 **Schedule Trigger → Gluecrawl (Run: Start) → Gluecrawl (Run: Get Items) → Google Sheets.**
 
 Run an existing `ready` job on n8n's clock. Because the job is already mapped there is no LLM
-work and no upfront charge — the run replays the cached config. Leave waiting enabled so the
-Get Items step sees a completed run, then dedupe on a stable key before appending rows.
+work and no upfront charge — the run replays the cached config. Turn `Wait for Completion` on so
+the Get Items step sees a completed run, then dedupe on a stable key before appending rows. On a
+slow site prefer recipe B, which costs no execution time at all while the scrape runs.
 
 ### B. Event-driven pipeline
 
@@ -275,6 +278,21 @@ small here, since each submission is a new billable job.
 
 Gluecrawl bills in credits. Two behaviours are worth internalising before you automate against
 this package.
+
+**The inline wait is off by default, and it occupies an execution while it polls.**
+`Wait for Completion` on Job: Create and Run: Start polls `/v1` in-process, so the n8n execution
+stays busy for the whole scrape. On n8n Cloud that is one of the plan's concurrency slots
+(5 on Starter, 20 on Pro), and production executions that exceed the limit queue behind it.
+Turn the wait on for short interactive scrapes and for the AI-agent path; for anything
+scheduled or high-volume leave it off and let the Gluecrawl Trigger wake the workflow on
+`run.completed`. Job: Create is the one to be most careful with: it runs the LLM mapper _and_
+the first scrape before it returns.
+
+**A webhook-triggered workflow should leave the wait off.** n8n fails a webhook request that
+has not answered within 100 seconds with a `524`, which is well under the wait's own
+300-second default. If a Webhook node starts the workflow and is set to respond when the last
+node finishes, an inline wait on a real scrape will lose the response. Respond immediately, or
+use the trigger.
 
 **A wait timeout does not cancel the run.** The wait options on Job: Create and Run: Start poll
 the API; they do not control it. `/v1` has no cancel endpoint. When a wait exceeds its timeout

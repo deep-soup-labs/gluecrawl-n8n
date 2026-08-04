@@ -12,6 +12,15 @@
  * the API created alongside the job, then wait for that run to finish. Timing out
  * cancels nothing — `/v1` has no cancel endpoint — which is why every expiry goes
  * through `waitTimeoutError`.
+ *
+ * It defaults to OFF, and that is deliberate. The poll runs in-process, so it holds
+ * the n8n execution — and on Cloud one of the account's concurrency slots — for the
+ * mapper plus the whole first scrape. Defaulting it on put the longest, most
+ * expensive path on the branch a user gets without touching anything, and the way
+ * it failed there was the worst one available: a timeout that reads like an abort
+ * but leaves the run executing and billable. n8n persists only parameters the user
+ * edited, so this default IS the behaviour for every workflow that never opened the
+ * toggle. `tests/node/waitDefaults.test.ts` pins it.
  */
 
 import {
@@ -155,9 +164,9 @@ const properties: INodeProperties[] = [
 		displayName: 'Wait for Completion',
 		name: 'waitForCompletion',
 		type: 'boolean',
-		default: true,
+		default: false,
 		description:
-			'Whether to hold the workflow until the site has been mapped and the first run has finished. Mapping alone routinely takes tens of seconds. Turn this off to get the job back immediately and collect the results later with the Gluecrawl Trigger or Run: Get.',
+			'Whether to hold the workflow until the site has been mapped and the first run has finished. Off by default: mapping runs three LLM agents and the first scrape follows it, so this routinely blocks for minutes, and the whole time it occupies an n8n execution slot. Leave it off to get the job back immediately and collect the rows with the Gluecrawl Trigger on "run.completed" or a later Run: Get. Turn it on only for short interactive scrapes.',
 	},
 	{
 		displayName: 'Output Scraped Rows',

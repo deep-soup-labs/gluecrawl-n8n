@@ -13,6 +13,12 @@
  * 2. `/v1` has no cancel endpoint. Giving up on the wait does not stop the run
  *    and does not stop the charge, which is why the timeout path goes through
  *    `waitForRunTerminal` and its shared wording instead of a local throw.
+ * 3. `Wait for Completion` defaults to OFF, matching Job: Create. The wait is
+ *    cheaper here — no mapper, so it is only as long as the scrape — but it is
+ *    still an in-process poll holding an n8n execution (and a Cloud concurrency
+ *    slot) for the duration. The two operations share a default so that moving a
+ *    workflow from create-and-wait to rerun does not silently change how it
+ *    behaves. See the header of `job/create.operation.ts` for the full reasoning.
  */
 
 import {
@@ -45,9 +51,9 @@ export const description: INodeProperties[] = [
 		displayName: 'Wait for Completion',
 		name: 'waitForCompletion',
 		type: 'boolean',
-		default: true,
+		default: false,
 		description:
-			'Whether to poll the run until it finishes before continuing the workflow. Turn this off to start the run and continue immediately, then pick up the result with the Gluecrawl Trigger or a later Run: Get.',
+			'Whether to poll the run until it finishes before continuing the workflow. Off by default: the poll blocks the execution for as long as the scrape takes, which occupies an n8n execution slot. Leave it off to start the run and continue immediately, then pick up the rows with the Gluecrawl Trigger on "run.completed" or a later Run: Get. Turn it on only for short interactive scrapes.',
 		displayOptions: { show: showFor },
 	},
 	{
