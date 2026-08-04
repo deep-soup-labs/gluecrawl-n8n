@@ -350,7 +350,9 @@ export function createLoadOptionsContext(options: MockContextOptions = {}) {
 
 /**
  * `IHookFunctions` / `IWebhookFunctions` stand-in. `getNodeParameter` follows
- * the trigger-context signature `(name, fallback?)`.
+ * the trigger-context signature `(name, fallback?, options?)` — no item index,
+ * but the same `extractValue` option, which the Job filter's resource locator
+ * relies on.
  */
 export function createHookContext(options: MockContextOptions = {}) {
 	const parameters = options.parameters ?? {};
@@ -379,8 +381,9 @@ export function createHookContext(options: MockContextOptions = {}) {
 
 	return {
 		...base,
-		getNodeParameter: jest.fn((name: string, fallback?: unknown) =>
-			resolveParameter(parameters, name, fallback),
+		getNodeParameter: jest.fn(
+			(name: string, fallback?: unknown, options?: { extractValue?: boolean }) =>
+				applyExtractValue(resolveParameter(parameters, name, fallback), options),
 		),
 		getNodeWebhookUrl: jest.fn(() => webhookUrl ?? undefined),
 		getBodyData: jest.fn(() => options.body ?? {}),

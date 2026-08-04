@@ -103,6 +103,29 @@ export function jobLocator(description: string): INodeProperties {
 }
 
 /**
+ * The Job field on the trigger, where choosing a job narrows which deliveries
+ * start the workflow rather than naming the job an operation acts on.
+ *
+ * The same picker as everywhere else — the trigger carries a Gluecrawl
+ * credential, so `searchJobs` runs there identically — with the one difference a
+ * filter needs: it is optional, and an empty value means every job on the
+ * account. Leaving `required: true` would make the editor demand a job before
+ * the node could be configured, turning the unfiltered case into an impossible
+ * one.
+ */
+export function jobFilterLocator(description: string): INodeProperties {
+	const locator = jobLocator(description);
+
+	return {
+		...locator,
+		required: false,
+		modes: (locator.modes ?? []).map((mode) =>
+			mode.name === 'list' ? { ...mode, placeholder: 'Select a job to filter by...' } : mode,
+		),
+	};
+}
+
+/**
  * The Run picker.
  *
  * `/v1` lists runs only under a job (`GET /v1/jobs/{id}/runs`; there is no
