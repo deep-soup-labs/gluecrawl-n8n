@@ -101,7 +101,7 @@ describe('GluecrawlApi credential', () => {
 			`${DEFAULT_BASE_URL}///`,
 			`${DEFAULT_BASE_URL}/v1`,
 			`${DEFAULT_BASE_URL}/v1/`,
-			'  https://staging-api.gluecrawl.ai/v1  ',
+			'  https://gluecrawl.internal.example.com/v1  ',
 			'https://gluecrawl.internal.example.com',
 		])('resolves %p to the same URL the transport would build', (baseUrl) => {
 			expect(`${normalise(baseUrl)}/v1/jobs`).toBe(buildUrl(baseUrl, '/v1/jobs'));

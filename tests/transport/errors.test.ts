@@ -79,7 +79,7 @@ describe('every documented error code is mapped', () => {
 
 		expect(error.message).toBe('The Gluecrawl account is on a plan without API access');
 		expect(error.description).toContain(upstream);
-		expect(error.description).toContain('https://www.gluecrawl.ai/pricing');
+		expect(error.description).toContain('https://www.gluecrawl.ai/#pricing');
 	});
 
 	it('402 insufficient_credits keeps the API message and explains when charging happens', () => {
@@ -445,7 +445,7 @@ describe('failures already wrapped by n8n-core', () => {
 
 		expect(error.message).toBe('The Gluecrawl account is on a plan without API access');
 		expect(error.description).toContain('This endpoint requires a Starter plan or higher.');
-		expect(error.description).toContain('https://www.gluecrawl.ai/pricing');
+		expect(error.description).toContain('https://www.gluecrawl.ai/#pricing');
 		expect(error.httpCode).toBe('403');
 	});
 

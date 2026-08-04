@@ -10,12 +10,12 @@
   "resources": {
     "credentialDocumentation": [
       {
-        "url": "https://www.gluecrawl.ai/docs"
+        "url": "https://www.gluecrawl.ai/docs/api"
       }
     ],
     "primaryDocumentation": [
       {
-        "url": "https://www.gluecrawl.ai/docs"
+        "url": "https://www.gluecrawl.ai/docs/api"
       }
     ]
   }

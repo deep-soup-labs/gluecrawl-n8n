@@ -124,7 +124,7 @@ describe('toGluecrawlApiError', () => {
 		expect(error.message).toContain('without API access');
 		expect(error.description).toContain('This endpoint requires a Starter plan or higher.');
 		// The actionable half is the upgrade pointer the API body does not carry.
-		expect(error.description).toContain('https://www.gluecrawl.ai/pricing');
+		expect(error.description).toContain('https://www.gluecrawl.ai/#pricing');
 	});
 
 	it('spells out all three job_not_ready causes', () => {

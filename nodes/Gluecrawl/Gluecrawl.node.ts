@@ -66,7 +66,7 @@ export class Gluecrawl implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Scrape websites with Gluecrawl and get structured rows back',
-		documentationUrl: 'https://www.gluecrawl.ai/docs',
+		documentationUrl: 'https://www.gluecrawl.ai/docs/api',
 		defaults: {
 			name: 'Gluecrawl',
 		},

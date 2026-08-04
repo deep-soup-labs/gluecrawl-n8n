@@ -226,7 +226,7 @@ export class GluecrawlTrigger implements INodeType {
 		// expression error while the node is still being configured.
 		subtitle: '={{ ($parameter["events"] || []).join(", ") }}',
 		description: 'Starts the workflow when a Gluecrawl run finishes or a job finishes mapping',
-		documentationUrl: 'https://www.gluecrawl.ai/docs',
+		documentationUrl: 'https://www.gluecrawl.ai/docs/api',
 		// Declared explicitly, and explicitly not a tool: an AI agent calls the
 		// Gluecrawl action node, which has an `execute`. A trigger only has a
 		// `webhook`, so wrapping it as a tool would offer agents a node that

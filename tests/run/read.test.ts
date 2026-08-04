@@ -190,7 +190,7 @@ describe('Run: Get', () => {
 		expect(String(items[0].json.errorDescription)).toContain(
 			'This endpoint requires a Starter plan or higher.',
 		);
-		expect(String(items[0].json.errorDescription)).toContain('https://www.gluecrawl.ai/pricing');
+		expect(String(items[0].json.errorDescription)).toContain('https://www.gluecrawl.ai/#pricing');
 		scope.done();
 	});
 });

@@ -1,8 +1,8 @@
 /**
  * Wire types for the Gluecrawl `/v1` API.
  *
- * Mirrors `gluecrawl-api/app/schemas/v1/*` exactly. Two API quirks are encoded
- * here and matter to every consumer:
+ * Mirrors the documented `/v1` response schemas exactly. Two API quirks are
+ * encoded here and matter to every consumer:
  *
  * 1. Null-valued optional fields are OMITTED from the JSON, not sent as null.
  *    That is why the optional fields below are `?:` rather than `| null`.
