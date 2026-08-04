@@ -67,7 +67,7 @@ const operationSelector: INodeProperties = {
 			value: 'start',
 			action: 'Start a run',
 			description:
-				'Re-scrape a job that is already mapped, reusing its cached config. No mapping cost and nothing charged upfront; the run settles once it finishes. Rate limited to 10 requests per minute.',
+				'Re-scrape a job that is already mapped, reusing its cached config. No mapping cost and nothing charged upfront; the run settles once it finishes. Starts one run for every input item, and is rate limited to 10 requests per minute.',
 		},
 	],
 };

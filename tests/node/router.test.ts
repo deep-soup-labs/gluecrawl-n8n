@@ -107,4 +107,29 @@ describe('Gluecrawl router', () => {
 
 		expect(runOperations).toEqual(['downloadCsv', 'get', 'getItems', 'getMany', 'start']);
 	});
+
+	// n8n calls `execute` once per input item, so ten rows arriving from an
+	// upstream node start ten runs, each billed, and the eleventh trips the
+	// 10/min limit — losing the runs already started along with the execution.
+	// Collapsing the items would break the paired-item contract, so the guard is
+	// a hint naming `Execute Once`. It has to stay keyed on the two BILLED
+	// operations and on there being more than one item, or it becomes noise on
+	// the free reads and users learn to ignore it.
+	it('warns before the billed operations fan out over a batch of input items', () => {
+		const hints = node.description.hints ?? [];
+
+		expect(hints).toHaveLength(2);
+
+		for (const hint of hints) {
+			expect(hint.type).toBe('warning');
+			expect(hint.displayCondition).toContain('$input.all().length > 1');
+			expect(hint.message).toContain('Execute Once');
+		}
+
+		const conditions = hints.map((hint) => hint.displayCondition);
+		expect(conditions[0]).toContain('"run"');
+		expect(conditions[0]).toContain('"start"');
+		expect(conditions[1]).toContain('"job"');
+		expect(conditions[1]).toContain('"create"');
+	});
 });

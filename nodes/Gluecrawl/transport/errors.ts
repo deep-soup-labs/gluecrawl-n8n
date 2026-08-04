@@ -373,7 +373,7 @@ function explain(info: GluecrawlApiErrorInfo): Explanation {
 				message: retryAfter
 					? `Gluecrawl rate limit hit — retry in ${retryAfter}s`
 					: 'Gluecrawl rate limit hit',
-				description: `${apiMessage} Limits are per minute: 60 job creations, 10 run starts, 10 webhook changes. Reads are not limited. Add a Wait node or lower the batch size upstream.${retryAfter ? ` The API asked for a ${retryAfter}s pause.` : ''}`,
+				description: `${apiMessage} Limits are per minute: 60 job creations, 10 run starts, 10 webhook changes. Reads are not limited. A node runs once per input item, so a batch sends one request each: if the extra items did not each need their own request, turn on "Execute Once" in the node settings; otherwise add a Wait node or lower the batch size upstream.${retryAfter ? ` The API asked for a ${retryAfter}s pause.` : ''}`,
 			};
 
 		case 'enqueue_failed':

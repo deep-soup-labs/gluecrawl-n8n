@@ -6,14 +6,22 @@
  * finishes. Use this, not Job: Create, whenever a job for the site already
  * exists.
  *
- * Two things shape the design here:
+ * Four things shape the design here:
  *
- * 1. The endpoint is rate limited to 10 requests per minute, so the operation
+ * 1. `execute` handles ONE input item, so n8n calls it once per item and a batch
+ *    arriving from an upstream node starts a run each — every one billed, and
+ *    past the rate limit after ten. Deliberately NOT deduplicated here: a
+ *    `jobId` driven by an expression is a legitimate fan-out, and collapsing
+ *    items would break the paired-item contract every downstream node relies
+ *    on. n8n's own answer is the node's `Execute Once` setting, which a node
+ *    type cannot default; the hint in `Gluecrawl.node.ts` makes the fan-out
+ *    visible before the click and names that setting.
+ * 2. The endpoint is rate limited to 10 requests per minute, so the operation
  *    description says so — a loop over more than 10 job IDs needs a Wait node.
- * 2. `/v1` has no cancel endpoint. Giving up on the wait does not stop the run
+ * 3. `/v1` has no cancel endpoint. Giving up on the wait does not stop the run
  *    and does not stop the charge, which is why the timeout path goes through
  *    `waitForRunTerminal` and its shared wording instead of a local throw.
- * 3. `Wait for Completion` defaults to OFF, matching Job: Create. The wait is
+ * 4. `Wait for Completion` defaults to OFF, matching Job: Create. The wait is
  *    cheaper here — no mapper, so it is only as long as the scrape — but it is
  *    still an in-process poll holding an n8n execution (and a Cloud concurrency
  *    slot) for the duration. The two operations share a default so that moving a

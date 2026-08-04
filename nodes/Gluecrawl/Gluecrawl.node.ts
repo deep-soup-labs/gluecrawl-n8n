@@ -79,6 +79,34 @@ export class Gluecrawl implements INodeType {
 				required: true,
 			},
 		],
+		// n8n runs a node once per input item, so the two billed operations fan
+		// out silently: ten rows arriving from an upstream Gluecrawl read start
+		// ten runs against the same job. That is standard n8n semantics and must
+		// not be "fixed" by collapsing items — a jobId driven by an expression is
+		// a legitimate fan-out — but it costs money and blows through the 10/min
+		// run-start limit mid-execution, which loses the runs already started.
+		// The hints make the count visible before the click, and name the setting
+		// that stops it. Same shape as the Google Sheets per-item hints.
+		hints: [
+			{
+				type: 'warning',
+				message:
+					'This node starts <strong>one run per input item</strong>, and every run is billed. Turn on <em>Execute Once</em> in this node&apos;s settings to start a single run, or reduce the items reaching it. Run starts are also rate limited to 10 per minute.',
+				displayCondition:
+					'={{ $parameter["resource"] === "run" && $parameter["operation"] === "start" && $input.all().length > 1 }}',
+				whenToDisplay: 'always',
+				location: 'inputPane',
+			},
+			{
+				type: 'warning',
+				message:
+					'This node creates <strong>one job per input item</strong>, and each one is charged upfront and stays on the account until deleted. Turn on <em>Execute Once</em> in this node&apos;s settings to create a single job, or reduce the items reaching it.',
+				displayCondition:
+					'={{ $parameter["resource"] === "job" && $parameter["operation"] === "create" && $input.all().length > 1 }}',
+				whenToDisplay: 'always',
+				location: 'inputPane',
+			},
+		],
 		// The agent-facing copy is deliberately different from the human-facing
 		// one above. An agent cannot see the pricing note in the operation
 		// descriptions until after it has picked an operation, and by then the
