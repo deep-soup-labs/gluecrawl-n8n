@@ -313,11 +313,27 @@ unattested tarball.
 
 ## Version history
 
-### Unreleased
+### 1.0.2
 
-- **Wait for Completion now defaults to off** on Job: Create and Run: Start. Workflows that never
-  opened the toggle will start returning the job or run record immediately instead of the scraped
-  rows. Turn it back on where you want the old behaviour.
+> [!WARNING]
+> This release changes the output of existing workflows. **Wait for Completion now defaults to
+> off** on Job: Create and Run: Start.
+>
+> n8n stores only parameters you actually edited, so any workflow that never opened the toggle
+> was running with the old default. Those nodes now return the **job or run record immediately**
+> instead of the **scraped rows**, and a downstream node reading an extracted column such as
+> `{{ $json.price }}` will stop finding it.
+>
+> To keep the previous behaviour, open the node and switch **Wait for Completion** on. To adopt
+> the new one, read the rows with Run: Get Items, or drive the workflow from the Gluecrawl
+> Trigger on `run.completed`.
+
+Why it changed: the wait is an in-process poll that holds the n8n execution — and a Cloud
+concurrency slot — for the whole scrape, and it timed out on the default path. A timeout there
+cancels nothing, because `/v1` has no cancel endpoint, so the run kept going and stayed billable.
+
+- The **Timeout** field is unchanged at 300s and still unbounded.
+- README restructured onto n8n's community-node template.
 
 ### 1.0.1
 
