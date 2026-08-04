@@ -13,7 +13,7 @@ import nock from 'nock';
 
 import { GluecrawlTrigger } from '../../nodes/GluecrawlTrigger/GluecrawlTrigger.node';
 import type { Run } from '../../nodes/Gluecrawl/types';
-import { BASE_URL, createHookContext, useNock } from '../helpers';
+import { BASE_URL, createHookContext, resourceLocatorValue, useNock } from '../helpers';
 
 const trigger = new GluecrawlTrigger();
 
@@ -198,6 +198,47 @@ describe('trigger: webhook', () => {
 
 		const ctx = ctxFor({
 			parameters: { jobId: `  ${JOB_ID}  ` },
+			body: delivery('run.completed', { run_id: RUN_ID, job_id: JOB_ID }),
+		});
+
+		const json = emitted(await trigger.webhook.call(ctx as unknown as IWebhookFunctions));
+
+		expect(json?.verified).toBe(true);
+	});
+
+	// The field is a resource locator, so the stored value is an object rather
+	// than the string the filter compares. Reading it without `extractValue`
+	// would stringify to "[object Object]" and silently drop every delivery.
+	it('filters on a job chosen from the picker, not only on a pasted ID', async () => {
+		nock(BASE_URL).get(`/v1/runs/${RUN_ID}`).reply(200, API_RUN);
+
+		const ctx = ctxFor({
+			parameters: { jobId: resourceLocatorValue(JOB_ID) },
+			body: delivery('run.completed', { run_id: RUN_ID, job_id: JOB_ID }),
+		});
+
+		const json = emitted(await trigger.webhook.call(ctx as unknown as IWebhookFunctions));
+
+		expect(json?.verified).toBe(true);
+	});
+
+	it('drops an event for another job when the picker holds a job', async () => {
+		const ctx = ctxFor({
+			parameters: { jobId: resourceLocatorValue(JOB_ID) },
+			body: delivery('run.completed', { run_id: RUN_ID, job_id: 'some-other-job' }),
+		});
+
+		expect(await trigger.webhook.call(ctx as unknown as IWebhookFunctions)).toEqual({});
+		expect(ctx.calls).toHaveLength(0);
+	});
+
+	// An untouched picker persists as `{ mode: 'list', value: '' }`, which is the
+	// default state of the field and has to keep meaning "every job".
+	it('treats an empty picker as no filter at all', async () => {
+		nock(BASE_URL).get(`/v1/runs/${RUN_ID}`).reply(200, API_RUN);
+
+		const ctx = ctxFor({
+			parameters: { jobId: resourceLocatorValue('') },
 			body: delivery('run.completed', { run_id: RUN_ID, job_id: JOB_ID }),
 		});
 

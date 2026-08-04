@@ -173,7 +173,9 @@ The **Gluecrawl Trigger** node subscribes to four events:
 | `job.ready`     | The mapper finished and the job is scrapeable.                          |
 | `job.failed`    | The mapper failed; the job is dead and needs replacing.                 |
 
-An optional **Job ID** filter drops events for other jobs before they reach the workflow.
+An optional **Job** filter drops events for other jobs before they reach the workflow. It is the
+same picker the action node uses — choose a job from the list, or paste an ID. Leave it empty to
+receive events for every job on the account.
 
 ### Several endpoints per account
 

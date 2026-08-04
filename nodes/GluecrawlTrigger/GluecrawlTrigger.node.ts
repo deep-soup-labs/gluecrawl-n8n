@@ -40,6 +40,8 @@ import {
 	type WebhookPayloadData,
 } from '../Gluecrawl/types';
 
+import { searchJobs } from '../Gluecrawl/methods';
+import { jobFilterLocator } from '../Gluecrawl/resources/locators';
 import { gluecrawlApiRequest } from '../Gluecrawl/transport';
 import {
 	isGluecrawlErrorCode,
@@ -297,16 +299,22 @@ export class GluecrawlTrigger implements INodeType {
 					},
 				],
 			},
-			{
-				displayName: 'Job ID',
-				name: 'jobId',
-				type: 'string',
-				default: '',
-				placeholder: 'e.g. 7a3f9c1e-2b40-4d1a-9f77-0d5a1c8e3b62',
-				description:
-					'Only start the workflow for events belonging to this job. Leave empty to receive events for every job on the account. Filtering happens in n8n — Gluecrawl always delivers every subscribed event, because the account has a single endpoint shared by all jobs.',
-			},
+			jobFilterLocator(
+				'Only start the workflow for events belonging to this job. Leave it empty to receive events for every job on the account. Filtering happens in n8n — a webhook endpoint subscribes to event types, not to jobs, so Gluecrawl delivers every subscribed event regardless.',
+			),
 		],
+	};
+
+	/**
+	 * Edit-time method behind the Job filter. Shared verbatim with the action
+	 * node: the picker has to list the same jobs from the same credential, and a
+	 * trigger-local copy would only be a second place for the label format and
+	 * the scan bounds to drift.
+	 */
+	methods = {
+		listSearch: {
+			searchJobs,
+		},
 	};
 
 	webhookMethods = {
@@ -560,7 +568,11 @@ export class GluecrawlTrigger implements INodeType {
 		}
 
 		// Cheapest rejection first: no credential read, no API call.
-		const jobIdFilter = String(this.getNodeParameter('jobId', '') ?? '').trim();
+		// `extractValue` unwraps the resource locator; it is a passthrough for a
+		// plain string, so a value arriving from an expression reads the same.
+		const jobIdFilter = String(
+			this.getNodeParameter('jobId', '', { extractValue: true }) ?? '',
+		).trim();
 		if (jobIdFilter && data.job_id !== jobIdFilter) {
 			// Acknowledged with 200 and dropped. Answering anything else would make
 			// Gluecrawl record a delivery failure for an event we deliberately ignored.
