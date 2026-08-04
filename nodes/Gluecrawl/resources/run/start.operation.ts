@@ -30,6 +30,7 @@ import {
 } from 'n8n-workflow';
 
 import { gluecrawlApiRequest } from '../../transport';
+import { rethrowIfCancelled } from '../../transport/cancellation';
 import { markGluecrawlError, toGluecrawlApiError } from '../../transport/errors';
 import { gluecrawlApiRequestAllItems } from '../../transport/pagination';
 import { waitForRunTerminal } from '../../transport/poll';
@@ -173,6 +174,10 @@ export async function execute(
 			pairedItem: { item: index },
 		}));
 	} catch (error) {
+		// A cancelled execution is not a run failure. Emitting an error item here
+		// would let the rest of the workflow run on top of a teardown.
+		rethrowIfCancelled(error);
+
 		// Idempotent: the transport, the wait timeout and the failed-run throw above
 		// all produce NodeApiErrors already, so this only wraps what escaped them.
 		const apiError = toGluecrawlApiError(this.getNode(), error, { itemIndex: index });

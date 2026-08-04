@@ -62,6 +62,12 @@ export interface MockContextOptions {
 	rawBody?: string;
 	headers?: Record<string, string>;
 	node?: INode;
+	/**
+	 * Execution cancel signal. Only `createExecuteContext` exposes it, because
+	 * only execution contexts have one in n8n — the pickers and the trigger do
+	 * not, and the transport probes for it rather than assuming.
+	 */
+	abortSignal?: AbortSignal;
 }
 
 /** The parts of a fake context tests assert on, alongside the n8n surface. */
@@ -311,6 +317,7 @@ export function createExecuteContext(options: MockContextOptions = {}) {
 	return {
 		...base,
 		getInputData: jest.fn(() => [{ json: {} }]),
+		getExecutionCancelSignal: jest.fn(() => options.abortSignal),
 		getNodeParameter: jest.fn(
 			(
 				name: string,

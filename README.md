@@ -157,6 +157,10 @@ the work is done. It is **off by default**.
   with an error naming the run id, but the run keeps executing and is **still charged**. Recover
   it with Run: Get / Run: Get Items, or let the trigger pick it up. Retrying starts a second
   billable run.
+- **Stopping the execution does stop the polling.** "Stop execution", a workflow timeout or a
+  worker shutdown ends the wait on the next tick, and the node makes no further API calls. The
+  same caveat as a timeout applies to the work itself: the run continues on Gluecrawl's side and
+  is still charged, so collect it by run id rather than starting another.
 - Turn it on for short interactive scrapes and the AI-agent path. For anything scheduled or
   high-volume, leave it off and let the Gluecrawl Trigger wake the workflow on `run.completed`.
 
@@ -312,6 +316,15 @@ unattested tarball.
 - [Issues and feature requests](https://github.com/deep-soup-labs/gluecrawl-n8n/issues)
 
 ## Version history
+
+### Unreleased
+
+- **Wait for Completion now honours execution cancellation.** Stopping a workflow — from the
+  editor, a workflow timeout, or a queue-mode worker shutting down — previously left the poll
+  sleeping out its current tick and then issuing more API calls for the rest of its timeout
+  budget. It now stops on the next tick and makes no further calls. A cancellation is also no
+  longer reported as a Gluecrawl failure, and is no longer converted into an error item when
+  Continue On Fail is on.
 
 ### 1.0.2
 
