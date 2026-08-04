@@ -27,7 +27,7 @@ export const DEFAULT_WEBHOOK_URL = 'https://n8n.example.com/webhook/gluecrawl';
 export const NODE: INode = {
 	id: 'test-node',
 	name: 'Gluecrawl',
-	type: 'n8n-nodes-gluecrawl.gluecrawl',
+	type: '@gluecrawl/n8n-nodes-gluecrawl.gluecrawl',
 	typeVersion: 1,
 	position: [0, 0],
 	parameters: {},

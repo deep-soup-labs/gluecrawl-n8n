@@ -1,5 +1,5 @@
 {
-  "node": "n8n-nodes-gluecrawl.gluecrawlTrigger",
+  "node": "@gluecrawl/n8n-nodes-gluecrawl.gluecrawlTrigger",
   "nodeVersion": "1.0",
   "codexVersion": "1.0",
   "categories": ["Data & Storage", "Development"],

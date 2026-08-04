@@ -1,4 +1,4 @@
-# n8n-nodes-gluecrawl
+# @gluecrawl/n8n-nodes-gluecrawl
 
 n8n community nodes for [Gluecrawl](https://www.gluecrawl.ai) — agentic web scraping.
 
@@ -36,7 +36,7 @@ to a paid plan on the [Gluecrawl pricing page](https://www.gluecrawl.ai/#pricing
 
 ### Self-hosted n8n
 
-In the n8n editor: **Settings → Community Nodes → Install**, enter `n8n-nodes-gluecrawl`,
+In the n8n editor: **Settings → Community Nodes → Install**, enter `@gluecrawl/n8n-nodes-gluecrawl`,
 accept the community-node risk prompt, install. n8n restarts the node loader and both nodes
 appear in the node panel.
 
@@ -44,7 +44,7 @@ Manual install (Docker or a custom image) — from your n8n user folder:
 
 ```bash
 cd ~/.n8n
-npm install n8n-nodes-gluecrawl
+npm install @gluecrawl/n8n-nodes-gluecrawl
 ```
 
 Restart n8n afterwards.
