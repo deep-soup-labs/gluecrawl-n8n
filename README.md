@@ -1,46 +1,32 @@
 # @gluecrawl/n8n-nodes-gluecrawl
 
-n8n community nodes for [Gluecrawl](https://www.gluecrawl.ai) — agentic web scraping.
+This is an n8n community node. It lets you use **[Gluecrawl](https://www.gluecrawl.ai)** in your
+n8n workflows.
 
-Point Gluecrawl at a URL and describe what you want in plain English, or name the columns
-yourself. Gluecrawl's mapper agents work out the selectors and pagination once, then every
-later run replays that config deterministically. This package exposes that Job → Run → rows
-model as n8n operations, plus a webhook trigger that fires when a run finishes.
+> Point Gluecrawl at a URL and describe what you want in plain English. Its mapper agents work
+> out the selectors and pagination once, then every later run replays that config
+> deterministically and returns structured rows.
 
-The package ships two node classes:
+[n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/reference/license/)
+workflow automation platform.
 
-- **Gluecrawl** — the action node (jobs, runs, and the rows a run extracted). Also available to
-  AI Agents as a tool.
-- **Gluecrawl Trigger** — a webhook trigger for `run.completed`, `run.failed`, `job.ready`
-  and `job.failed`.
-
----
-
-## Requirements: the plan gate
-
-**Gluecrawl API keys are available on every paid plan — Starter and above.** The Free plan can
-use the dashboard but cannot mint an API key, and without a key these nodes cannot authenticate.
-
-- One **active key per account**. Creating a new key revokes the previous one immediately —
-  rotate deliberately, since every workflow using the old key starts failing with
-  `invalid_api_key`.
-- Keys are minted in the Gluecrawl dashboard under **Settings → API keys**.
-- The account's email address must be verified and the account must be active.
-
-If you see a `403` telling you your plan does not include API access, that is this gate. Upgrade
-to a paid plan on the [Gluecrawl pricing page](https://www.gluecrawl.ai/#pricing).
-
----
+[Installation](#installation)
+[Operations](#operations)
+[Credentials](#credentials)
+[Compatibility](#compatibility)
+[Usage](#usage)
+[AI Agent Tool Usage](#ai-agent-tool-usage)
+[Development](#development)
+[Resources](#resources)
+[Version history](#version-history)
 
 ## Installation
 
-### Self-hosted n8n
+Follow the [installation guide](https://docs.n8n.io/integrations/community-nodes/installation/)
+in the n8n community nodes documentation, using the package name
+`@gluecrawl/n8n-nodes-gluecrawl`.
 
-In the n8n editor: **Settings → Community Nodes → Install**, enter `@gluecrawl/n8n-nodes-gluecrawl`,
-accept the community-node risk prompt, install. n8n restarts the node loader and both nodes
-appear in the node panel.
-
-Manual install (Docker or a custom image) — from your n8n user folder:
+Manual install, from your n8n user folder:
 
 ```bash
 cd ~/.n8n
@@ -49,289 +35,237 @@ npm install @gluecrawl/n8n-nodes-gluecrawl
 
 Restart n8n afterwards.
 
-### n8n Cloud
-
-n8n Cloud installs **verified** community nodes only. This package is built against the
-verification rules (zero runtime dependencies, no filesystem or environment access, single
-service, MIT licence) and is submitted through the n8n Creator Hub. Until verification is
-granted, use self-hosted n8n.
-
----
-
-## Credential setup
-
-Create a **Gluecrawl API** credential:
-
-| Field        | Notes                                                                                                                                                                     |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **API Key**  | From the Gluecrawl dashboard. Stored encrypted by n8n and sent as `Authorization: Bearer <key>`.                                                                          |
-| **Base URL** | Defaults to `https://api.gluecrawl.ai`. Change it only if you were given a different host to target. A trailing slash — or a URL that already ends in `/v1` — is handled. |
-
-Press **Test** after saving. The test issues a cheap authenticated read (`GET /v1/jobs?limit=1`)
-because `/v1` has no dedicated auth-check endpoint. A failure distinguishes a bad key from an
-unverified email address and from a plan without API access.
-
----
+> [!NOTE]
+> n8n Cloud installs **verified** community nodes only. This package is built against the
+> verification rules and is submitted through the n8n Creator Hub. Until verification is granted,
+> use self-hosted n8n.
 
 ## Operations
 
-Every operation below is its own entry in the n8n node panel — search for "Gluecrawl" and pick
-the action directly; there is no need to drop the node and then hunt through dropdowns.
+The package ships two nodes.
 
-| Resource | Operation    | Endpoint                      | Notes                                                                                                                                                                                                                                                                                       |
-| -------- | ------------ | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Job**  | Create       | `POST /v1/jobs`               | URL plus either a plain-English **Goal** or an explicit **Columns** list (name + type: text, number, array, url, date). Optional **Max Pages** (1–100). Waits for mapping and the first run by default, and can emit the scraped rows directly. **Charges credits — see Costs and limits.** |
-| Job      | Get          | `GET /v1/jobs/{id}`           | Returns the job's status and, once `ready`, its `columns` (`listing` / `detail`) — the output schema the scraper will produce.                                                                                                                                                              |
-| Job      | Get Many     | `GET /v1/jobs`                | Paginated, with a Return All option.                                                                                                                                                                                                                                                        |
-| Job      | Delete       | `DELETE /v1/jobs/{id}`        | Cascade-deletes the job's schedule. Irreversible.                                                                                                                                                                                                                                           |
-| **Run**  | Start        | `POST /v1/jobs/{id}/runs`     | Reruns a `ready` job against its cached mapper config — no LLM work, no upfront charge, cost settled after completion. Optional **Max Pages** override. Waits for the run to finish by default.                                                                                             |
-| Run      | Get          | `GET /v1/runs/{id}`           | Status, item and page counts, credits used, billing breakdown.                                                                                                                                                                                                                              |
-| Run      | Get Many     | `GET /v1/jobs/{id}/runs`      | Run history for one job, paginated.                                                                                                                                                                                                                                                         |
-| Run      | Get Items    | `GET /v1/runs/{id}/items`     | One n8n item per scraped row: the row's `data` plus `page_number` and `item_index`. Return All auto-paginates at the API maximum of 500 rows per request.                                                                                                                                   |
-| Run      | Download CSV | `GET /v1/runs/{id}/items/csv` | The run's rows as a CSV file on the item's binary property — ready for Gmail, Drive or S3 nodes.                                                                                                                                                                                            |
+### Gluecrawl
 
-The rows a scrape produced are **operations on Run**, not a resource of their own. `/v1` has no
-item entity to address — every row endpoint is keyed on a run, rows carry no id, and reading is
-the only thing you can do with one — so a separate resource only made you pick the same Run
-twice under two different names.
+| Resource | Operation    | Endpoint                      | Notes                                                                        |
+| -------- | ------------ | ----------------------------- | ---------------------------------------------------------------------------- |
+| Job      | Create       | `POST /v1/jobs`               | URL plus a **Goal** or explicit **Columns**. **Charges credits upfront.**    |
+| Job      | Get          | `GET /v1/jobs/{id}`           | Status, and once `ready` the `columns` the scraper will produce              |
+| Job      | Get Many     | `GET /v1/jobs`                | Paginated, with Return All                                                   |
+| Job      | Delete       | `DELETE /v1/jobs/{id}`        | Cascade-deletes the job's schedule. Irreversible.                            |
+| Run      | Start        | `POST /v1/jobs/{id}/runs`     | Reruns a `ready` job on its cached config. No LLM work, no upfront charge.   |
+| Run      | Get          | `GET /v1/runs/{id}`           | Status, item and page counts, credits used, billing breakdown                |
+| Run      | Get Many     | `GET /v1/jobs/{id}/runs`      | Run history for one job, paginated                                           |
+| Run      | Get Items    | `GET /v1/runs/{id}/items`     | One n8n item per scraped row. Return All auto-paginates at 500 rows/request. |
+| Run      | Download CSV | `GET /v1/runs/{id}/items/csv` | The run's rows as a CSV file on the item's binary property                   |
+
+Each operation is its own entry in the node panel — search "Gluecrawl" and pick the action
+directly.
+
+The rows a scrape produced are **operations on Run**, not a resource of their own: `/v1` has no
+item entity to address, and every row endpoint is keyed on a run.
+
+### Gluecrawl Trigger
+
+| Event           | Fires when                                             |
+| --------------- | ------------------------------------------------------ |
+| `run.completed` | A run reached `completed`. The usual entry point.      |
+| `run.failed`    | A run reached `failed`                                 |
+| `job.ready`     | The mapper finished and the job is scrapeable          |
+| `job.failed`    | The mapper failed; the job is dead and needs replacing |
+
+An optional **Job** filter drops events for other jobs. Leave it empty to receive events for
+every job on the account.
+
+## Credentials
+
+API keys are available on **every paid plan (Starter and above)**. The Free plan can use the
+dashboard but cannot mint a key — a `403` saying your plan does not include API access is this
+gate, and is fixed on the [pricing page](https://www.gluecrawl.ai/#pricing).
+
+1. Sign up at [gluecrawl.ai](https://www.gluecrawl.ai) and verify your email address.
+2. Mint a key in the dashboard under **Settings → API keys**.
+3. In n8n, create a **Gluecrawl API** credential and paste the key.
+
+| Field        | Notes                                                                                                   |
+| ------------ | ------------------------------------------------------------------------------------------------------- |
+| **API Key**  | Stored encrypted by n8n, sent as `Authorization: Bearer <key>`                                          |
+| **Base URL** | Defaults to `https://api.gluecrawl.ai`. A trailing slash, or a URL already ending in `/v1`, is handled. |
+
+Press **Test** after saving. The test issues a cheap authenticated read (`GET /v1/jobs?limit=1`)
+because `/v1` has no dedicated auth-check endpoint, and it distinguishes a bad key from an
+unverified email address and from a plan without API access.
+
+> [!IMPORTANT]
+> There is **one active key per account**. Minting a new key revokes the previous one
+> immediately, and every workflow still using it starts failing with `invalid_api_key`.
+
+## Compatibility
+
+- **Node.js 22 or higher.**
+- **n8n 1.79.0 or higher** for AI tool support. Earlier versions work for everything else.
+- Developed and tested against `n8n-workflow` 2.x.
+- Zero runtime dependencies, by design — an n8n Cloud verification requirement.
+
+## Usage
+
+### The Job → Run → rows model
+
+A **job** holds the mapper config for one URL. Creating one runs the LLM mapper and charges
+credits upfront. A **run** executes that config and produces **rows**. Reruns skip the mapper
+entirely, so create the job once and rerun it.
+
+Job statuses:
+
+| Status        | Meaning                                                         |
+| ------------- | --------------------------------------------------------------- |
+| `in_progress` | Mapping is still running                                        |
+| `ready`       | Mapper config exists; the job can be rerun cheaply              |
+| `failed`      | Mapping failed. **Terminal.**                                   |
+| `stale`       | A scrape found zero items, usually a site change. **Terminal.** |
+
+Gluecrawl never re-maps an existing job, so retrying a run against a `failed` or `stale` one
+keeps returning `409 job_not_ready`. Create a new job instead.
 
 ### Picking jobs and runs
 
-**Job** and **Run** fields are pickers, not bare text boxes. Each has two modes:
+**Job** and **Run** fields are pickers with two modes: **From List** (browse or search your
+account — select the credential first) and **By ID** (paste a UUID, or use an expression such as
+`{{ $json.id }}`).
 
-- **From List** — browse or search the jobs on your account, and the runs of the selected job.
-  The list is fetched with your credential, so select the credential first.
-- **By ID** — paste a UUID, or switch to Expression and wire an ID from an upstream node, e.g.
-  `{{ $json.id }}`. This is the mode to use when the ID comes from another node rather than from
-  you.
+- Jobs are listed as `host - status`, runs as `timestamp - status`. Two jobs on the same host
+  with the same status look identical — pick by ID if you keep several.
+- `Run: Get`, `Run: Get Items` and `Run: Download CSV` ask for a **Job** as well as a **Run**.
+  The job only scopes the run list; it is not sent to the API. Every Gluecrawl output carrying a
+  run ID carries the job ID beside it, so both fields fill from the same upstream record.
+- Changing the Job does **not** clear a run already chosen — that is n8n's behaviour for any
+  dependent picker. The node checks the two agree before reading anything, so a stale selection
+  fails loudly instead of returning another job's data.
 
-Jobs are listed as `host - status` (a leading `www.` is dropped), runs as
-`timestamp - status`. The status matters: **Run: Start** only accepts a `ready` job, and
-`failed` / `stale` are terminal — those need a new job, not a retry. Two jobs against the same
-host with the same status look identical in the list; pick by ID if you keep several.
+### Waiting for a scrape to finish
 
-`Run: Get`, `Run: Get Items` and `Run: Download CSV` ask for a **Job** as well as a **Run**. The
-job is what scopes the run list — `/v1` lists runs only under a job. It is not sent to the API,
-which identifies the run by its ID alone. Every Gluecrawl output that carries a run ID carries
-the job ID beside it (`Run: Start` returns `job_id` on the run, `Job: Create` returns the job
-with the run nested under `run`, and the trigger emits both), so both fields can be filled from
-the same upstream record.
+Job: Create and Run: Start both offer **Wait for Completion**, which polls `/v1` in-process until
+the work is done. It is **off by default**.
 
-Note that changing the Job does **not** clear a run already chosen in the Run field — that is
-n8n's behaviour for any dependent picker, not something the node can override. The node checks
-the two agree before it reads anything and fails with a clear message if they have drifted
-apart, so a mismatch can never quietly return another job's data.
+> [!WARNING]
+> The poll holds the n8n execution for the whole scrape — on n8n Cloud, one of your plan's
+> concurrency slots (5 on Starter, 20 on Pro). Job: Create is the expensive one: it waits out the
+> LLM mapper _and_ the first scrape.
+
+- **Webhook-triggered workflows should leave it off.** n8n fails a webhook request that has not
+  answered within 100 seconds with a `524`, well under the wait's own 300-second default.
+- **A timeout does not cancel anything.** `/v1` has no cancel endpoint. On expiry the node fails
+  with an error naming the run id, but the run keeps executing and is **still charged**. Recover
+  it with Run: Get / Run: Get Items, or let the trigger pick it up. Retrying starts a second
+  billable run.
+- Turn it on for short interactive scrapes and the AI-agent path. For anything scheduled or
+  high-volume, leave it off and let the Gluecrawl Trigger wake the workflow on `run.completed`.
 
 ### Output shapes
 
-Two shapes are contracts rather than incidental details, because workflows branch on them.
+- **Scraped rows.** Job: Create (with row output on) and Run: Start emit identical keys: the
+  row's extracted columns plus `run_id`, `page_number` and `item_index`. Those three are written
+  last, so they win a name clash with a column of the same name. Use Run: Get Items with
+  **Simplify** on for the raw, un-merged row.
+- **Simplify.** Job: Get and Run: Get return the raw record by default. The toggle flattens
+  nested fields — a job's `input` and `columns` to the goal text and column names, a run's
+  `billing` to `credits_settled`. Job: Delete confirms with `{deleted: true, id}`.
+- **Continue On Fail.** Every operation emits the same error item: `error` holds the summary,
+  `errorDescription` the actionable half. Run-scoped operations also carry `run_id`. One Switch
+  expression covers the whole package.
 
-**Scraped rows.** Job: Create (with row output on) and Run: Start emit the same keys: the
-row's extracted columns, plus `run_id`, `page_number` and `item_index`. Those three are written
-last, so they win a name clash with a column of the same name — a downstream node correlating
-on `run_id` has to be able to trust it. Use Run: Get Items with **Simplify** on if you need the
-raw, un-merged row instead.
+### Trigger behaviour
 
-**Simplify.** Job: Get and Run: Get return the raw record by default and offer a **Simplify**
-toggle that flattens the nested fields: a job's `input` and `columns` collapse to the goal text
-and the column names, and a run's `billing` collapses to `credits_settled`. It is off by default
-on both, because the full record is usually why you fetched one. Job: Delete confirms with
-`{deleted: true, id}`.
+**Each trigger workflow registers its own endpoint.** An account holds up to 5. If it is at the
+cap, activation fails with an error naming the limit; the node never deletes one of your
+endpoints to make room.
 
-**Continue On Fail.** Every operation on every resource emits the same error item: `error`
-holds the short summary, `errorDescription` holds the actionable half (which plan to upgrade to,
-whether a retry helps, whether the job is dead). Operations scoped to one run also carry
-`run_id`. One Switch-node expression covers the whole package.
+**Adopt, don't clobber.** The trigger only touches an endpoint pointing at itself. On activation
+it adopts an endpoint already pointing at this workflow's URL (updating the event list if it
+drifted) or registers a new one; endpoints pointing elsewhere are never repointed or deleted. On
+deactivation it deletes the endpoint **only if it created it and it still points here**, so
+deactivating a workflow can never destroy a webhook you configured yourself.
 
-### Job statuses
-
-`in_progress` → mapping is still running. `ready` → mapper config exists; the job can be rerun
-cheaply. `failed` → mapping failed. `stale` → a scrape found zero items, usually because the
-site changed.
-
-**`failed` and `stale` are terminal.** Gluecrawl does not re-map an existing job, so retrying a
-run against one will keep returning `409 job_not_ready`. Create a new job instead.
-
-### AI Agent tool
-
-The action node sets `usableAsTool`, so an AI Agent can call it directly. The canonical agent
-call is **Job: Create** in goal mode with `Wait for Completion` and row output turned on: URL
-plus a plain-English goal in, structured rows out. Gluecrawl returns tabular JSON rather than a
-Markdown blob, which is what makes the result usable by the next tool in the chain without a
-parsing step. This is one of the few places worth turning the wait on — an agent has nowhere to
-put a job id it cannot resolve in the same call. Read the Costs and limits section before wiring
-an agent loop to it.
-
----
-
-## Trigger
-
-The **Gluecrawl Trigger** node subscribes to four events:
-
-| Event           | Fires when                                                              |
-| --------------- | ----------------------------------------------------------------------- |
-| `run.completed` | A scrape run reached `completed`. The usual entry point for a pipeline. |
-| `run.failed`    | A scrape run reached `failed`.                                          |
-| `job.ready`     | The mapper finished and the job is scrapeable.                          |
-| `job.failed`    | The mapper failed; the job is dead and needs replacing.                 |
-
-An optional **Job** filter drops events for other jobs before they reach the workflow. It is the
-same picker the action node uses — choose a job from the list, or paste an ID. Leave it empty to
-receive events for every job on the account.
-
-### Several endpoints per account
-
-A Gluecrawl account can hold up to **5 webhook endpoints**, and each Gluecrawl Trigger workflow
-registers its own. Several trigger workflows can therefore run side by side, and alongside any
-webhook you configured in the dashboard, without competing for a slot.
-
-If the account is already at the cap, activation fails with an error naming the limit. The node
-never deletes one of your endpoints to make room.
-
-### Adopt, don't clobber
-
-The trigger only ever touches an endpoint that points at itself:
-
-- **On activation**, the node lists the account's webhooks. If one already points at this
-  workflow's webhook URL, the node adopts it and updates the event list if it drifted.
-  Otherwise it registers a new endpoint of its own. Endpoints pointing anywhere else are
-  ignored — never repointed, never deleted.
-- **On deactivation**, the node deletes the endpoint **only if it created it and it still points
-  at this workflow**. It re-checks both before deleting, so an endpoint it merely adopted — or
-  one you re-created or repointed from the dashboard in the meantime — is left alone.
-  Deactivating a workflow can never destroy a webhook you configured yourself.
-
-### Signed deliveries
-
-Every delivery carries an HMAC-SHA256 signature over the exact bytes sent:
+**Deliveries are signed** with HMAC-SHA256 over the exact bytes sent:
 
 ```
 X-Gluecrawl-Signature: t=<unix seconds>,v1=<hex digest>
 ```
 
-signed as `{timestamp}.{raw body}` with a secret unique to that endpoint. Gluecrawl discloses
-the secret **once**, in the response that creates the endpoint; the trigger stores it with the
-workflow and verifies every delivery against it. **A delivery whose signature does not verify is
-rejected** — it never reaches your workflow. The timestamp is inside the signed material and is
-checked against a 5-minute tolerance, so a captured delivery cannot be replayed later.
+signed as `{timestamp}.{raw body}` with a per-endpoint secret. **A delivery that does not verify
+is rejected** and never reaches your workflow. The timestamp is inside the signed material and
+checked against a 5-minute tolerance, so a captured delivery cannot be replayed.
 
-One consequence worth knowing: an endpoint the node **adopted** rather than created has a secret
-the node never saw, so its deliveries cannot be verified and are refused. Deactivate and
-reactivate the workflow to register an endpoint it owns.
+> [!NOTE]
+> Gluecrawl discloses the secret once, when the endpoint is created. An endpoint the node
+> **adopted** therefore has a secret it never saw, and its deliveries are refused. Deactivate and
+> reactivate to register an endpoint the node owns.
 
-After verifying, the node fetches the referenced run (or job) from `/v1` and emits the API's
-response rather than the bare payload. That is now purely for convenience — payloads carry only
-ids and statuses, and the next node (usually **Run: Get Items**) wants the record.
+After verifying, the node fetches the referenced run or job and emits the API record rather than
+the bare payload, since the next node usually wants it. A `webhook.test` delivery is emitted as a
+marked test item (`test: true`) — trigger one from the dashboard to confirm wiring without
+running a scrape.
 
-A `webhook.test` delivery is emitted as a clearly marked test item (`test: true`), so you can
-confirm the wiring end to end without running a scrape. The node does not send one itself:
-trigger it from the Gluecrawl dashboard, or by calling `POST /v1/webhooks/{id}/test` against the
-endpoint the trigger registered.
+**Delivery is at-least-once.** Gluecrawl attempts each delivery up to 5 times, backing off
+roughly 10s, 30s, 2m and 10m, with a 10-second timeout per attempt. A brief n8n outage costs
+latency rather than the event — but **your workflow can see the same event twice**. Key
+de-duplication on the payload's `event_id`.
 
-### Delivery is at-least-once
+Webhook targets must be **https** and resolve to a **public** IP; `http://localhost` and private
+ranges are rejected with `422 invalid_webhook_url`.
 
-Gluecrawl attempts each delivery up to **5 times**, backing off roughly 10s, 30s, 2m and 10m,
-with a 10-second timeout per attempt. A brief n8n outage therefore costs latency rather than the
-event.
+### Costs and rate limits
 
-The flip side is that **your workflow can see the same event twice**: a delivery that arrived and
-was processed but whose acknowledgement was lost gets retried. Each payload carries a stable
-event id (`event_id` on the emitted item) — key your de-duplication on that if replaying an event
-would be harmful. Where completeness matters more than duplication, recipe A's periodic sweep is
-still a good backstop.
+**Every Job: Create mints a persistent job and runs the LLM mapper.** The creation cost is
+charged upfront and there is no dedupe by URL, so:
 
-Webhook target URLs must be **https** and resolve to a **public** IP. `http://localhost` and
-private ranges are rejected with `422 invalid_webhook_url`, which is why testing the trigger
-against a local n8n needs a public tunnel (see Local development).
-
----
-
-## Recipes
-
-### A. Scheduled refresh
-
-**Schedule Trigger → Gluecrawl (Run: Start) → Gluecrawl (Run: Get Items) → Google Sheets.**
-
-Run an existing `ready` job on n8n's clock. Because the job is already mapped there is no LLM
-work and no upfront charge — the run replays the cached config. Turn `Wait for Completion` on so
-the Get Items step sees a completed run, then dedupe on a stable key before appending rows. On a
-slow site prefer recipe B, which costs no execution time at all while the scrape runs.
-
-### B. Event-driven pipeline
-
-**Gluecrawl Trigger (`run.completed`) → Gluecrawl (Run: Get Items) → transform → destination.**
-
-No polling and no wasted executions: the workflow wakes only when a run actually finishes. The
-trigger's verified output already carries the run id, so the Get Items step just reads it.
-
-### C. On-demand scrape
-
-**Form / Chat trigger → Gluecrawl (Job: Create, goal mode, wait + output rows) → reply.**
-
-The user supplies a URL and a goal; the node mints the job, waits for mapping and the first run,
-and emits the rows. Two nodes, one round trip. This is also the AI-agent path — keep Max Pages
-small here, since each submission is a new billable job.
-
----
-
-## Costs and limits
-
-Gluecrawl bills in credits. Two behaviours are worth internalising before you automate against
-this package.
-
-**The inline wait is off by default, and it occupies an execution while it polls.**
-`Wait for Completion` on Job: Create and Run: Start polls `/v1` in-process, so the n8n execution
-stays busy for the whole scrape. On n8n Cloud that is one of the plan's concurrency slots
-(5 on Starter, 20 on Pro), and production executions that exceed the limit queue behind it.
-Turn the wait on for short interactive scrapes and for the AI-agent path; for anything
-scheduled or high-volume leave it off and let the Gluecrawl Trigger wake the workflow on
-`run.completed`. Job: Create is the one to be most careful with: it runs the LLM mapper _and_
-the first scrape before it returns.
-
-**A webhook-triggered workflow should leave the wait off.** n8n fails a webhook request that
-has not answered within 100 seconds with a `524`, which is well under the wait's own
-300-second default. If a Webhook node starts the workflow and is set to respond when the last
-node finishes, an inline wait on a real scrape will lose the response. Respond immediately, or
-use the trigger.
-
-**A wait timeout does not cancel the run.** The wait options on Job: Create and Run: Start poll
-the API; they do not control it. `/v1` has no cancel endpoint. When a wait exceeds its timeout
-the node fails with an error containing the run id, but **the run keeps executing on
-Gluecrawl's side and is still charged**. Recover it later with Run: Get / Run: Get Items using
-that id, or let the trigger pick up its completion. Raising the timeout is usually a better
-answer than retrying, because a retry starts a second billable run.
-
-**Every Job: Create mints a persistent job and runs the LLM mapper.** The job-creation cost is
-charged upfront, at creation time, and mapping happens on every new job — there is no dedupe by
-URL. Consequences:
-
-- An AI Agent looping on Job: Create accumulates jobs and credits, quickly. Give agents a small
-  Max Pages, and steer them toward **Run: Start** against an existing job whenever one already
-  exists for that URL.
-- For anything recurring, create the job once and rerun it. Reruns skip the mapper entirely.
+- Give AI agents a small **Max Pages**, and steer them toward **Run: Start** against an existing
+  job.
+- For anything recurring, create the job once and rerun it.
 - Jobs persist until deleted. Housekeeping is Job: Get Many + Job: Delete.
 
-Runs that fail through the platform's dead-letter path have their credits refunded
-automatically; `502 enqueue_failed` is likewise refunded and is safe to retry.
+Runs that fail through the platform's dead-letter path are refunded automatically, as is
+`502 enqueue_failed`, which is safe to retry.
 
-### Rate limits
+| Endpoint group                          | Limit            |
+| --------------------------------------- | ---------------- |
+| Job: Create                             | 60 / minute      |
+| Run: Start                              | 10 / minute      |
+| Webhook create / update / delete / test | 10 / minute      |
+| All GET operations, including CSV       | not rate limited |
 
-| Endpoint group                                   | Limit            |
-| ------------------------------------------------ | ---------------- |
-| Job: Create                                      | 60 / minute      |
-| Run: Start                                       | 10 / minute      |
-| Webhook create / update / delete / test          | 10 / minute      |
-| All GET operations (job, run and row reads, CSV) | not rate limited |
+Exceeding a limit returns `429`; the node surfaces `Retry-After` in the error so a Wait node or
+n8n's retry setting can honour it.
 
-Exceeding a limit returns `429`; the node surfaces the `Retry-After` value in the error so a
-Wait node or n8n's own retry setting can honour it.
+### Example workflows
 
----
+| Goal              | Workflow                                                                       |
+| ----------------- | ------------------------------------------------------------------------------ |
+| Scheduled refresh | Schedule Trigger → Gluecrawl (Run: Start, wait on) → Run: Get Items → Sheets   |
+| Event-driven      | Gluecrawl Trigger (`run.completed`) → Run: Get Items → transform → destination |
+| On-demand scrape  | Form / Chat trigger → Gluecrawl (Job: Create, goal mode, wait on) → reply      |
 
-## Local development
+The event-driven shape is the one to prefer at any volume: the workflow wakes only when a run
+actually finishes, and costs no execution time while the scrape is running.
 
-Node 22 and npm. The package has **no runtime dependencies** by design (an n8n Cloud
-verification requirement), so `npm ci` only installs the toolchain.
+## AI Agent Tool Usage
+
+The action node sets `usableAsTool`, so an AI Agent can call it directly. Gluecrawl returns
+tabular JSON rather than a Markdown blob, which is what makes the result usable by the next tool
+in the chain without a parsing step.
+
+- **Self-hosted n8n needs `N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=true`** to allow community
+  nodes as AI tools.
+- The canonical agent call is **Job: Create** in goal mode with **Wait for Completion** and row
+  output on — an agent has nowhere to put a job id it cannot resolve in the same call. This is
+  the one place the inline wait is clearly worth it.
+- Job and Run fields are resource locators, so `$fromAI()` can fill them. Point agents at
+  **Run: Start** against an existing job wherever one exists — it skips the mapper and the
+  upfront charge.
+- Keep **Max Pages** small. Every Job: Create an agent makes is a new billable job.
+
+## Development
+
+Node 22 and npm. No runtime dependencies, so `npm ci` installs only the toolchain.
 
 ```bash
 npm ci
@@ -339,10 +273,10 @@ npm run lint        # eslint, including the n8n community-node ruleset
 npm run typecheck
 npm test            # jest, /v1 mocked with nock
 npm run build       # tsc to dist/ plus icon assets
-npm run format      # prettier
+npm run scan        # the n8n community-package scan, source and packed tarball
 ```
 
-To try the nodes in a real editor, build and link the package into your n8n user folder:
+To try the nodes in a real editor:
 
 ```bash
 npm run build
@@ -350,49 +284,49 @@ mkdir -p ~/.n8n/nodes
 cd ~/.n8n/nodes && npm install /absolute/path/to/gluecrawl-n8n
 ```
 
-Restart n8n and the nodes appear in the panel.
-
-**Testing the trigger locally needs a public URL.** Gluecrawl rejects webhook targets that are
-not https or that resolve to a private IP, so `http://localhost:5678/...` will be refused with
-`422 invalid_webhook_url`. This applies to "Test workflow" as much as to activation: n8n calls
-the same `create` hook for the `/webhook-test/` URL.
-
-`n8n start --tunnel` no longer works — n8n 2.0 removed the flag and **ignores it silently**, so
-the run looks normal while the webhook base URL stays `http://localhost:5678`. Put your own
-tunnel in front of n8n instead and tell n8n its public address:
+**Testing the trigger locally needs a public URL.** Gluecrawl refuses non-https and private-IP
+targets, so `http://localhost:5678/...` fails with `422 invalid_webhook_url` — including on "Test
+workflow", which calls the same registration hook. `n8n start --tunnel` no longer works: n8n 2.0
+removed the flag and **ignores it silently**, leaving the webhook base URL on localhost. Run your
+own tunnel and hand n8n its address:
 
 ```bash
 cloudflared tunnel --url http://localhost:5678   # prints https://<name>.trycloudflare.com
 N8N_WEBHOOK_URL="https://<name>.trycloudflare.com" npx n8n start
 ```
 
-`N8N_WEBHOOK_URL` is the n8n 2.x name for what used to be `WEBHOOK_URL`. n8n echoes the value
-back on startup ("Editor is now accessible via: ..."), which is the quickest way to confirm the
-node will register a public URL rather than a loopback one. A quick tunnel gets a fresh hostname
-every restart, so re-registering the trigger after a restart is expected.
+`N8N_WEBHOOK_URL` is the n8n 2.x name for the old `WEBHOOK_URL`. n8n echoes the value on startup
+("Editor is now accessible via: ..."), the quickest check that the node will register a public
+URL. Quick tunnels get a fresh hostname every restart, so expect to re-register the trigger.
 
----
+**Releasing** is tag-driven and CI-only. Land on `main` with CI green, bump `version`, then
+`git tag vX.Y.Z && git push origin vX.Y.Z`. The publish workflow builds, tests and publishes with
+[npm provenance](https://docs.npmjs.com/generating-provenance-statements), which verified
+community nodes must carry. **Never run `npm publish` locally** — a local publish produces an
+unattested tarball.
 
-## Releasing
+## Resources
 
-Publishing runs in CI with an [npm provenance](https://docs.npmjs.com/generating-provenance-statements)
-statement, which verified community nodes are required to carry. **Never run `npm publish`
-locally** — a local publish produces an unattested tarball.
+- [n8n community nodes documentation](https://docs.n8n.io/integrations/community-nodes/)
+- [Gluecrawl](https://www.gluecrawl.ai) — product, pricing and dashboard
+- [Issues and feature requests](https://github.com/deep-soup-labs/gluecrawl-n8n/issues)
 
-1. Land the change on `main` with CI green.
-2. Bump `version` in `package.json` and commit.
-3. Tag and push: `git tag v0.2.0 && git push origin v0.2.0`.
-4. The `publish` workflow builds, tests, and publishes with `--provenance`.
-5. For a first-time or re-verification submission, follow up on
-   [creators.n8n.io](https://creators.n8n.io).
+## Version history
 
----
+### Unreleased
 
-## Support
+- **Wait for Completion now defaults to off** on Job: Create and Run: Start. Workflows that never
+  opened the toggle will start returning the job or run record immediately instead of the scraped
+  rows. Turn it back on where you want the old behaviour.
 
-- Gluecrawl product and account questions: [gluecrawl.ai](https://www.gluecrawl.ai)
-- Bugs and feature requests for these nodes:
-  [GitHub issues](https://github.com/deep-soup-labs/gluecrawl-n8n/issues)
+### 1.0.1
+
+- Dropped the endpoint notice from the Gluecrawl Trigger parameters
+- Published under the `@gluecrawl` npm org
+
+### 1.0.0
+
+- Initial release: Job and Run operations, the Gluecrawl Trigger, and AI tool support
 
 ## License
 
