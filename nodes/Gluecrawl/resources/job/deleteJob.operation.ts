@@ -5,7 +5,9 @@
  * operation value in the UI is still `delete`.
  *
  * The API answers 204 with no body, so there is nothing to pass through and the
- * operation synthesises a confirmation item instead.
+ * operation synthesises a confirmation item instead. `deleted: true` is the key
+ * the n8n UX guidelines mandate for a delete; `id` rides along so a workflow
+ * deleting several jobs can tell the confirmations apart.
  */
 
 import {
@@ -44,7 +46,7 @@ export async function execute(
 			itemIndex: index,
 		});
 
-		return [{ json: { success: true, id: jobId }, pairedItem: { item: index } }];
+		return [{ json: { deleted: true, id: jobId }, pairedItem: { item: index } }];
 	} catch (error) {
 		if (!this.continueOnFail()) throw asNodeError(this.getNode(), error, index);
 		return jobErrorOutput(error, index);

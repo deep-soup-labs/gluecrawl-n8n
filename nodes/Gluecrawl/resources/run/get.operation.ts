@@ -13,6 +13,7 @@ import { toGluecrawlApiError } from '../../transport/errors';
 import type { Run } from '../../types';
 import { jobScopeLocator, runLocator } from '../locators';
 import { fetchRunInJob } from '../runScope';
+import { simplifyProperty, simplifyRun } from '../shared';
 import { errorItem, toJson } from './shared';
 
 const showFor = { resource: ['run'], operation: ['get'] };
@@ -25,6 +26,7 @@ export const description: INodeProperties[] = [
 		),
 		displayOptions: { show: showFor },
 	},
+	simplifyProperty({ show: showFor }),
 ];
 
 export async function execute(
@@ -49,7 +51,9 @@ export async function execute(
 			`While fetching run ${runId}`,
 		);
 
-		return [{ json: toJson(run), pairedItem: { item: index } }];
+		const simplify = this.getNodeParameter('simplify', index, false) as boolean;
+
+		return [{ json: simplify ? simplifyRun(run) : toJson(run), pairedItem: { item: index } }];
 	} catch (error) {
 		// Idempotent: the transport already mapped anything it threw, so this only
 		// wraps failures that escaped it.

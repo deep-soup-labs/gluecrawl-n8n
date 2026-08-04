@@ -87,7 +87,7 @@ export function jobLocator(description: string): INodeProperties {
 				displayName: 'By ID',
 				name: 'id',
 				type: 'string',
-				placeholder: '8f4a2c1e-0b7d-4a19-9c3f-6d5e2a1b8c04',
+				placeholder: 'e.g. 8f4a2c1e-0b7d-4a19-9c3f-6d5e2a1b8c04',
 				validation: [
 					{
 						type: 'regex',
@@ -141,7 +141,7 @@ export function runLocator(description: string): INodeProperties {
 				displayName: 'By ID',
 				name: 'id',
 				type: 'string',
-				placeholder: '8f14e45f-ceea-467a-9c1b-2a6b3f2b7c10',
+				placeholder: 'e.g. 8f14e45f-ceea-467a-9c1b-2a6b3f2b7c10',
 				validation: [
 					{
 						type: 'regex',

@@ -19,12 +19,14 @@ import {
 import { gluecrawlApiRequest } from '../../transport';
 import type { Job } from '../../types';
 import { jobLocator } from '../locators';
+import { simplifyJob, simplifyProperty } from '../shared';
 import { asNodeError, jobErrorOutput, jobOperationDisplay } from './shared';
 
 const properties: INodeProperties[] = [
 	jobLocator(
 		'The job to retrieve. Jobs are scoped to the account the API key belongs to; an ID from another account reads as not found.',
 	),
+	simplifyProperty(undefined),
 ];
 
 export const description: INodeProperties[] = updateDisplayOptions(
@@ -50,7 +52,14 @@ export async function execute(
 			{ context: 'While retrieving the job', itemIndex: index },
 		)) as Job;
 
-		return [{ json: job as unknown as IDataObject, pairedItem: { item: index } }];
+		const simplify = this.getNodeParameter('simplify', index, false) as boolean;
+
+		return [
+			{
+				json: simplify ? simplifyJob(job) : (job as unknown as IDataObject),
+				pairedItem: { item: index },
+			},
+		];
 	} catch (error) {
 		if (!this.continueOnFail()) throw asNodeError(this.getNode(), error, index);
 		return jobErrorOutput(error, index);

@@ -56,6 +56,57 @@ describe('Job: Get', () => {
 		scope.done();
 	});
 
+	it('flattens the nested fields when Simplify is on', async () => {
+		const ready = job('job-1', {
+			status: 'ready',
+			input: { type: 'goal', value: 'every product' },
+			columns: {
+				listing: [{ name: 'name', type: 'text' }],
+				detail: [{ name: 'sku', type: 'text' }],
+			},
+			max_pages: 3,
+			protection_level: 'light',
+		});
+		const scope = nock(BASE_URL).get('/v1/jobs/job-1').reply(200, ready);
+
+		const context = createExecuteContext({ parameters: { jobId: 'job-1', simplify: true } });
+		const [item] = await getJob.call(asExecute(context), 0);
+
+		// `input` and `columns` collapse to the parts an expression addresses, and
+		// `protection_level` drops out entirely.
+		expect(item.json).toEqual({
+			id: 'job-1',
+			url: 'https://example.com/job-1',
+			status: 'ready',
+			goal: 'every product',
+			listing_columns: ['name'],
+			detail_columns: ['sku'],
+			max_pages: 3,
+			created_at: '2026-01-01T00:00:00Z',
+			updated_at: '2026-01-01T00:00:00Z',
+		});
+		scope.done();
+	});
+
+	it('names the requested columns when the job was created from a column list', async () => {
+		const mapping = job('job-1', {
+			status: 'mapping',
+			input: { type: 'columns', value: [{ name: 'price', type: 'number' }] },
+		});
+		const scope = nock(BASE_URL).get('/v1/jobs/job-1').reply(200, mapping);
+
+		const context = createExecuteContext({ parameters: { jobId: 'job-1', simplify: true } });
+		const [item] = await getJob.call(asExecute(context), 0);
+
+		expect(item.json).toMatchObject({ requested_columns: ['price'] });
+		// Still mapping, so the mapper has resolved no columns yet. Simplifying must
+		// not invent the keys the raw shape leaves absent.
+		expect(item.json).not.toHaveProperty('listing_columns');
+		expect(item.json).not.toHaveProperty('goal');
+		expect(item.json).not.toHaveProperty('error');
+		scope.done();
+	});
+
 	it('leaves absent optional fields absent rather than filling in nulls', async () => {
 		// A job that is still mapping: no columns yet, and no error, schedule or
 		// input echoed back. All four keys are missing, not null.
@@ -214,7 +265,9 @@ describe('Job: Delete', () => {
 		const context = createExecuteContext({ parameters: { jobId: 'job-1' } });
 		const items = await deleteJob.call(asExecute(context), 0);
 
-		expect(items).toEqual([{ json: { success: true, id: 'job-1' }, pairedItem: { item: 0 } }]);
+		// `deleted` is the key the n8n UX guidelines mandate for a delete, and the
+		// one a downstream node branches on.
+		expect(items).toEqual([{ json: { deleted: true, id: 'job-1' }, pairedItem: { item: 0 } }]);
 		scope.done();
 	});
 

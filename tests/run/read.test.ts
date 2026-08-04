@@ -62,6 +62,58 @@ describe('Run: Get', () => {
 		scope.done();
 	});
 
+	it('flattens billing to the settled figure when Simplify is on', async () => {
+		const settled = run('run-1', {
+			item_count: 42,
+			page_count: 3,
+			credits_used: 12,
+			protection_level: 'moderate',
+			billing: {
+				listing_pages: 3,
+				detail_items: 42,
+				protection_level: 'moderate',
+				credits_settled: 12,
+			},
+			completed_at: '2026-01-01T00:05:00Z',
+		});
+		const scope = nock(BASE_URL).get('/v1/runs/run-1').reply(200, settled);
+
+		const context = createExecuteContext({ parameters: { runId: 'run-1', simplify: true } });
+		const [item] = await getRun.call(asExecute(context), 0);
+
+		expect(item.json).toEqual({
+			id: 'run-1',
+			job_id: 'job-1',
+			status: 'completed',
+			item_count: 42,
+			page_count: 3,
+			credits_used: 12,
+			credits_settled: 12,
+			created_at: '2026-01-01T00:00:00Z',
+			completed_at: '2026-01-01T00:05:00Z',
+		});
+		// The rest of the breakdown is exactly what Simplify off is for.
+		expect(item.json).not.toHaveProperty('billing');
+		expect(item.json).not.toHaveProperty('protection_level');
+		scope.done();
+	});
+
+	it('omits the unsettled keys when simplifying a run still in flight', async () => {
+		const scraping = run('run-1', { status: 'scraping' });
+		const scope = nock(BASE_URL).get('/v1/runs/run-1').reply(200, scraping);
+
+		const context = createExecuteContext({ parameters: { runId: 'run-1', simplify: true } });
+		const [item] = await getRun.call(asExecute(context), 0);
+
+		expect(item.json).toEqual({
+			id: 'run-1',
+			job_id: 'job-1',
+			status: 'scraping',
+			created_at: '2026-01-01T00:00:00Z',
+		});
+		scope.done();
+	});
+
 	it('leaves the unsettled fields absent on a run still in flight', async () => {
 		const scraping = run('run-1', { status: 'scraping' });
 		const scope = nock(BASE_URL).get('/v1/runs/run-1').reply(200, scraping);

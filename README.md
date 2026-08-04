@@ -132,6 +132,12 @@ last, so they win a name clash with a column of the same name — a downstream n
 on `run_id` has to be able to trust it. Use Run: Get Items with **Simplify** on if you need the
 raw, un-merged row instead.
 
+**Simplify.** Job: Get and Run: Get return the raw record by default and offer a **Simplify**
+toggle that flattens the nested fields: a job's `input` and `columns` collapse to the goal text
+and the column names, and a run's `billing` collapses to `credits_settled`. It is off by default
+on both, because the full record is usually why you fetched one. Job: Delete confirms with
+`{deleted: true, id}`.
+
 **Continue On Fail.** Every operation on every resource emits the same error item: `error`
 holds the short summary, `errorDescription` holds the actionable half (which plan to upgrade to,
 whether a retry helps, whether the job is dead). Operations scoped to one run also carry
