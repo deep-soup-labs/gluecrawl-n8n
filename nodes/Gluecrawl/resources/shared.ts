@@ -6,9 +6,92 @@
  * output has to be able to write one expression, not one per resource.
  */
 
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
-import type { Item } from '../types';
+import type { Item, Job, Run } from '../types';
+
+/**
+ * The `Simplify` toggle, worded exactly as the n8n UX guidelines specify.
+ *
+ * They ask for it on any response carrying ten or more fields: `Job` has 11 and
+ * `Run` has 12. `Run: Get Items` builds its own instead, because there the
+ * choice is about the row wrapper rather than about field count.
+ *
+ * Default off. Both single-record reads promise, in their own operation
+ * descriptions, fields that simplification drops — the billing breakdown on a
+ * run, the resolved column schema on a job — and a workflow fetching one record
+ * usually wants the record. Opting in is cheap; silently losing `billing` is not.
+ */
+export function simplifyProperty(
+	displayOptions: INodeProperties['displayOptions'],
+): INodeProperties {
+	return {
+		displayName: 'Simplify',
+		name: 'simplify',
+		type: 'boolean',
+		default: false,
+		displayOptions,
+		description: 'Whether to return a simplified version of the response instead of the raw data',
+	};
+}
+
+/**
+ * Simplified `Job`: the ten fields worth reading, with the nested ones flattened
+ * as the guidelines require.
+ *
+ * `input` collapses to whichever half of the union is present, and `columns` to
+ * the column NAMES — the part a downstream expression addresses. Dropped:
+ * `protection_level` and `schedule`, neither of which a workflow branches on.
+ *
+ * Absent keys stay absent. `/v1` omits null-valued fields rather than sending
+ * null, and re-introducing them here as `undefined` would break the
+ * tolerate-a-missing-key contract the raw shape already teaches.
+ */
+export function simplifyJob(job: Job): IDataObject {
+	const input = job.input;
+
+	return {
+		id: job.id,
+		url: job.url,
+		...(job.status !== undefined ? { status: job.status } : {}),
+		...(input?.type === 'goal' ? { goal: input.value } : {}),
+		...(input?.type === 'columns'
+			? { requested_columns: input.value.map((column) => column.name) }
+			: {}),
+		...(job.columns
+			? {
+					listing_columns: job.columns.listing.map((column) => column.name),
+					detail_columns: job.columns.detail.map((column) => column.name),
+				}
+			: {}),
+		...(job.max_pages !== undefined ? { max_pages: job.max_pages } : {}),
+		...(job.error !== undefined ? { error: job.error } : {}),
+		created_at: job.created_at,
+		updated_at: job.updated_at,
+	};
+}
+
+/**
+ * Simplified `Run`: ten fields, with `billing` flattened to the single number a
+ * workflow actually gates on. The rest of the breakdown (listing pages, detail
+ * items, protection level) is what Simplify off is for.
+ */
+export function simplifyRun(run: Run): IDataObject {
+	return {
+		id: run.id,
+		job_id: run.job_id,
+		status: run.status,
+		...(run.item_count !== undefined ? { item_count: run.item_count } : {}),
+		...(run.page_count !== undefined ? { page_count: run.page_count } : {}),
+		...(run.credits_used !== undefined ? { credits_used: run.credits_used } : {}),
+		...(run.billing?.credits_settled !== undefined
+			? { credits_settled: run.billing.credits_settled }
+			: {}),
+		...(run.error !== undefined ? { error: run.error } : {}),
+		created_at: run.created_at,
+		...(run.completed_at !== undefined ? { completed_at: run.completed_at } : {}),
+	};
+}
 
 /**
  * The `json` of one scraped row, for the two operations that emit rows

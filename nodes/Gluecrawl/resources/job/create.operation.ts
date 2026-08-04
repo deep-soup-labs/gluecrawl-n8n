@@ -63,7 +63,7 @@ const properties: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		placeholder: 'https://example.com/products?category=shoes',
+		placeholder: 'e.g. https://example.com/products?category=shoes',
 		description:
 			'Page to scrape. Point it at the listing that actually shows the records you want, not the homepage. Keep the query string intact — filters, sort order and pagination parameters are part of what gets scraped.',
 	},
@@ -95,7 +95,7 @@ const properties: INodeProperties[] = [
 		typeOptions: { rows: 3 },
 		required: true,
 		default: '',
-		placeholder: 'Extract the name, price and product URL of every product',
+		placeholder: 'e.g. Extract the name, price and product URL of every product',
 		displayOptions: { show: { inputMode: ['goal'] } },
 		description:
 			'What to extract, in plain English. Naming the fields you expect ("name, price, product URL") produces steadier column names than a vague goal.',
@@ -120,7 +120,7 @@ const properties: INodeProperties[] = [
 						type: 'string',
 						required: true,
 						default: '',
-						placeholder: 'price',
+						placeholder: 'e.g. price',
 						description: 'Column name, used as the field name on every extracted row',
 					},
 					{
