@@ -12,7 +12,10 @@ jest.mock('n8n-workflow', () => {
 	const { virtualClock } = jest.requireActual('../helpers/clock');
 	return {
 		...actual,
-		sleep: async (ms: number) => {
+		sleepWithAbort: async (ms: number, signal?: AbortSignal) => {
+			// Mirrors the real helper: an already-aborted signal rejects rather than
+			// advancing the clock, which is what lets a test cancel mid-wait.
+			if (signal?.aborted) throw new actual.ManualExecutionCancelledError('');
 			virtualClock.now += ms;
 		},
 	};

@@ -36,6 +36,7 @@ import {
 } from 'n8n-workflow';
 
 import { gluecrawlApiRequest } from '../../transport';
+import { executionCancelSignal, rethrowIfCancelled } from '../../transport/cancellation';
 import { markGluecrawlError } from '../../transport/errors';
 import { gluecrawlApiRequestAllItems, gluecrawlApiRequestPage } from '../../transport/pagination';
 import {
@@ -291,6 +292,7 @@ async function findFirstRun(
 	index: number,
 ): Promise<Run> {
 	const node = this.getNode();
+	const abortSignal = executionCancelSignal(this);
 
 	const runs = await pollUntil<Run[]>(
 		async () =>
@@ -304,6 +306,7 @@ async function findFirstRun(
 		{
 			intervalMs: RUN_DISCOVERY_INTERVAL_MS,
 			timeoutMs,
+			...(abortSignal ? { abortSignal } : {}),
 			onTimeout: () => {
 				throw waitTimeoutError(node, { timeoutMs, jobId, itemIndex: index });
 			},
@@ -397,6 +400,10 @@ export async function execute(
 			pairedItem: { item: index },
 		}));
 	} catch (error) {
+		// A cancelled execution is not a job failure. Emitting an error item here
+		// would let the rest of the workflow run on top of a teardown.
+		rethrowIfCancelled(error);
+
 		if (!this.continueOnFail()) throw asNodeError(this.getNode(), error, index);
 		return jobErrorOutput(error, index);
 	}

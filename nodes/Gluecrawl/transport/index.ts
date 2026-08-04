@@ -19,6 +19,7 @@ import type {
 } from 'n8n-workflow';
 
 import { DEFAULT_BASE_URL, type GluecrawlCredential } from '../types';
+import { rethrowIfCancelled } from './cancellation';
 import { toGluecrawlApiError } from './errors';
 
 export const CREDENTIAL_NAME = 'gluecrawlApi';
@@ -128,6 +129,11 @@ export async function gluecrawlApiRequest<T = IDataObject>(
 			requestOptions,
 		)) as T;
 	} catch (error) {
+		// n8n aborts in-flight requests when an execution is cancelled. Mapping
+		// that into "Gluecrawl request failed" would both mislead and, under
+		// Continue On Fail, let the workflow carry on past a cancellation.
+		rethrowIfCancelled(error);
+
 		throw toGluecrawlApiError(this.getNode(), error, {
 			...(options.context !== undefined ? { context: options.context } : {}),
 			...(options.itemIndex !== undefined ? { itemIndex: options.itemIndex } : {}),

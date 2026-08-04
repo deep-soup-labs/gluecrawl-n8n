@@ -27,6 +27,7 @@ import { searchJobs, searchRuns } from './methods';
 import * as job from './resources/job';
 import * as run from './resources/run';
 import { errorOutputItem } from './resources/shared';
+import { rethrowIfCancelled } from './transport/cancellation';
 
 /** The signature every `*.operation.ts` module's `execute` conforms to. */
 type OperationExecute = (this: IExecuteFunctions, index: number) => Promise<INodeExecutionData[]>;
@@ -150,6 +151,13 @@ export class Gluecrawl implements INodeType {
 			try {
 				returnData.push(...(await handler.call(this, index)));
 			} catch (error) {
+				// Cancellation is not a data problem, so `continueOnFail` must not
+				// swallow it: the execution is being torn down and the remaining input
+				// items must not be processed. Checked here as well as inside the
+				// operations because this net also covers throws from outside their
+				// try blocks.
+				rethrowIfCancelled(error);
+
 				// Safety net. Operations handle `continueOnFail` themselves, but a
 				// throw from outside their own try block (a failing parameter
 				// expression, say) would otherwise abort the whole execution despite
