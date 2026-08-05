@@ -334,9 +334,11 @@ export class GluecrawlTrigger implements INodeType {
 				if (!existing) {
 					// The endpoint we knew about is gone (deleted in the dashboard, or the
 					// slot was reassigned). Drop the stale ownership record so `delete`
-					// never targets an id that now belongs to someone else.
+					// never targets an id that now belongs to someone else, and the secret
+					// with it -- it authenticated that endpoint and nothing else.
 					delete staticData.webhookId;
 					delete staticData.createdByNode;
+					delete staticData.webhookSecret;
 					return false;
 				}
 
@@ -349,10 +351,18 @@ export class GluecrawlTrigger implements INodeType {
 				// carrying the flag across that identity change would let a later
 				// deactivation delete an endpoint the user created.
 				const owned = staticData.createdByNode === true && staticData.webhookId === existing.id;
+				const sameEndpoint = staticData.webhookId === existing.id;
 
 				staticData.webhookId = existing.id;
 				// Still sticky in the other direction: only `create` may promote to true.
 				staticData.createdByNode = owned;
+				// A different id at the same URL is a different endpoint with a different
+				// secret. Keeping the old one would fail every signature check while
+				// looking configured; dropping it makes the handler fail closed with the
+				// message that tells the user to re-register.
+				if (!sameEndpoint) {
+					delete staticData.webhookSecret;
+				}
 				return true;
 			},
 
@@ -447,9 +457,14 @@ export class GluecrawlTrigger implements INodeType {
 				const webhookId = typeof staticData.webhookId === 'string' ? staticData.webhookId : '';
 				const createdByNode = staticData.createdByNode === true;
 
+				// The secret goes with the endpoint. Leaving it behind would let the
+				// next activation verify deliveries from a DIFFERENT endpoint (same
+				// URL, new id, new secret) against the old key, and every delivery
+				// would be rejected until the user deactivated again.
 				const forget = (): void => {
 					delete staticData.webhookId;
 					delete staticData.createdByNode;
+					delete staticData.webhookSecret;
 				};
 
 				if (!webhookId || !createdByNode) {

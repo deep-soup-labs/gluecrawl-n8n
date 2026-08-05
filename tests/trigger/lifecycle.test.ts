@@ -124,7 +124,7 @@ describe('trigger: checkExists', () => {
 
 		const ctx = createHookContext({
 			parameters: { events: ['run.completed'] },
-			staticData: { webhookId: 'wh_stale', createdByNode: true },
+			staticData: { webhookId: 'wh_stale', createdByNode: true, webhookSecret: 'whsec_stale' },
 		});
 
 		await expect(methods.checkExists.call(ctx as unknown as IHookFunctions)).resolves.toBe(false);
@@ -132,6 +132,8 @@ describe('trigger: checkExists', () => {
 		// that now belongs to someone else.
 		expect(ctx.staticData.webhookId).toBeUndefined();
 		expect(ctx.staticData.createdByNode).toBeUndefined();
+		// The secret authenticated that endpoint alone.
+		expect(ctx.staticData.webhookSecret).toBeUndefined();
 		expect(callsOf(ctx.calls, 'PATCH')).toHaveLength(0);
 		expect(callsOf(ctx.calls, 'DELETE')).toHaveLength(0);
 	});
@@ -144,12 +146,16 @@ describe('trigger: checkExists', () => {
 
 		const ctx = createHookContext({
 			parameters: { events: ['run.completed'] },
-			staticData: { webhookId: OUR_ID, createdByNode: true },
+			staticData: { webhookId: OUR_ID, createdByNode: true, webhookSecret: 'whsec_ours' },
 		});
 
 		await expect(methods.checkExists.call(ctx as unknown as IHookFunctions)).resolves.toBe(true);
 		expect(ctx.staticData.webhookId).toBe('wh_dashboard');
 		expect(ctx.staticData.createdByNode).toBe(false);
+		// A new id means a new secret. Verifying against the old one would reject
+		// every delivery while the workflow looked correctly configured; without a
+		// secret the handler fails closed and says how to re-register.
+		expect(ctx.staticData.webhookSecret).toBeUndefined();
 	});
 
 	it('keeps ownership when the very same endpoint is still in the slot', async () => {
@@ -158,11 +164,13 @@ describe('trigger: checkExists', () => {
 
 		const ctx = createHookContext({
 			parameters: { events: ['run.completed'] },
-			staticData: { webhookId: OUR_ID, createdByNode: true },
+			staticData: { webhookId: OUR_ID, createdByNode: true, webhookSecret: 'whsec_ours' },
 		});
 
 		await expect(methods.checkExists.call(ctx as unknown as IHookFunctions)).resolves.toBe(true);
 		expect(ctx.staticData.createdByNode).toBe(true);
+		// Same endpoint, same secret: deliveries must keep verifying across a restart.
+		expect(ctx.staticData.webhookSecret).toBe('whsec_ours');
 	});
 
 	it('is false without calling the API when n8n has no webhook URL yet', async () => {
@@ -362,7 +370,7 @@ describe('trigger: delete', () => {
 
 		const ctx = createHookContext({
 			parameters: { events: ['run.completed'] },
-			staticData: { webhookId: OUR_ID, createdByNode: true },
+			staticData: { webhookId: OUR_ID, createdByNode: true, webhookSecret: 'whsec_ours' },
 		});
 
 		await expect(methods.delete.call(ctx as unknown as IHookFunctions)).resolves.toBe(true);
@@ -372,6 +380,9 @@ describe('trigger: delete', () => {
 		expect(deletes[0].path).toBe(`/v1/webhooks/${OUR_ID}`);
 		expect(ctx.staticData.webhookId).toBeUndefined();
 		expect(ctx.staticData.createdByNode).toBeUndefined();
+		// The secret dies with the endpoint. Left behind, it would be used to
+		// verify deliveries from whatever endpoint next answers to this URL.
+		expect(ctx.staticData.webhookSecret).toBeUndefined();
 	});
 
 	it('never deletes an adopted endpoint, but still forgets it', async () => {
@@ -529,6 +540,49 @@ describe('trigger: endpoint identity changes under a stable URL', () => {
 		const deactivate = createHookContext({ parameters: { events: ['run.completed'] }, staticData });
 		await expect(methods.delete.call(deactivate as unknown as IHookFunctions)).resolves.toBe(true);
 		expect(callsOf(deactivate.calls, 'DELETE')).toHaveLength(0);
+	});
+
+	/**
+	 * The secret is scoped to the endpoint, so it must never outlive the record
+	 * that names it. A secret surviving into the next activation verifies
+	 * deliveries signed by a DIFFERENT key: the endpoint looks registered, the
+	 * workflow looks active, and every delivery is rejected -- with no way out
+	 * short of another deactivate/reactivate cycle.
+	 */
+	it('never carries a signing secret across an endpoint identity change', async () => {
+		const staticData = {};
+
+		// 1. The node registers its own endpoint and is told the secret, once.
+		listWebhooks([]);
+		nock(BASE_URL)
+			.post('/v1/webhooks')
+			.reply(201, { ...webhook({ id: 'wh_old' }), secret: 'whsec_old' });
+
+		const activate = createHookContext({ parameters: { events: ['run.completed'] }, staticData });
+		await methods.create.call(activate as unknown as IHookFunctions);
+		expect(staticData).toEqual({
+			webhookId: 'wh_old',
+			createdByNode: true,
+			webhookSecret: 'whsec_old',
+		});
+
+		// 2. Deactivation removes the endpoint, and with it the only thing the
+		//    secret could ever authenticate.
+		listWebhooks([webhook({ id: 'wh_old' })]);
+		nock(BASE_URL).delete('/v1/webhooks/wh_old').reply(204);
+		const deactivate = createHookContext({ parameters: { events: ['run.completed'] }, staticData });
+		await methods.delete.call(deactivate as unknown as IHookFunctions);
+		expect(staticData).toEqual({});
+
+		// 3. The user registers a new endpoint against the same URL in the
+		//    dashboard, then reactivates. Adoption yields no secret, so the handler
+		//    fails closed instead of rejecting every delivery against the old key.
+		listWebhooks([webhook({ id: 'wh_new' })]);
+		const reactivate = createHookContext({ parameters: { events: ['run.completed'] }, staticData });
+		await expect(methods.checkExists.call(reactivate as unknown as IHookFunctions)).resolves.toBe(
+			true,
+		);
+		expect(staticData).toEqual({ webhookId: 'wh_new', createdByNode: false });
 	});
 });
 

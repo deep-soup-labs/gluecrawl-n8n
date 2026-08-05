@@ -317,6 +317,17 @@ unattested tarball.
 
 ## Version history
 
+### Unreleased
+
+- **The webhook signing secret no longer outlives the endpoint it belongs to.** Deactivating a
+  trigger workflow cleared the endpoint ownership record but kept the secret. If the endpoint was
+  then re-created — in the dashboard, or by a later activation — the same n8n URL answered to a
+  new endpoint with a new secret, and the stored one rejected every delivery while the workflow
+  looked correctly configured. The secret is now discarded wherever the endpoint identity is
+  dropped, so an adopted endpoint fails closed with the message that explains how to re-register.
+- Removed the unsupported `subcategories` field from both node codex files. It is not part of the
+  codex schema and was silently ignored.
+
 ### 1.0.3
 
 - **Wait for Completion now honours execution cancellation.** Stopping a workflow — from the
