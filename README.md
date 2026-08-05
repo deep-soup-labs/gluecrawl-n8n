@@ -323,10 +323,14 @@ unattested tarball.
   trigger workflow cleared the endpoint ownership record but kept the secret. If the endpoint was
   then re-created — in the dashboard, or by a later activation — the same n8n URL answered to a
   new endpoint with a new secret, and the stored one rejected every delivery while the workflow
-  looked correctly configured. The secret is now discarded wherever the endpoint identity is
-  dropped, so an adopted endpoint fails closed with the message that explains how to re-register.
-- Removed the unsupported `subcategories` field from both node codex files. It is not part of the
-  codex schema and was silently ignored.
+  looked correctly configured. The secret is now tied to the endpoint id: it is discarded when
+  that id changes or the endpoint is deleted, and kept when the endpoint is unchanged.
+- **The "no signing secret" message now gives advice that works.** It told users to deactivate and
+  reactivate, which cannot help when another endpoint already points at this workflow's URL — the
+  workflow simply adopts it again, still without a secret. It now says to delete that endpoint in
+  the dashboard first.
+- Removed the `subcategories` field from both node codex files, as requested by the n8n node
+  review. n8n reads it only for the `AI` category, so it never had an effect here.
 
 ### 1.0.3
 

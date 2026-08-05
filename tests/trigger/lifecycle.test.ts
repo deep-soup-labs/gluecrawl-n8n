@@ -128,20 +128,18 @@ describe('trigger: checkExists', () => {
 		});
 
 		await expect(methods.checkExists.call(ctx as unknown as IHookFunctions)).resolves.toBe(false);
-		// Dropping the record is what stops `delete` from later targeting an id
-		// that now belongs to someone else.
 		expect(ctx.staticData.webhookId).toBeUndefined();
 		expect(ctx.staticData.createdByNode).toBeUndefined();
-		// The secret authenticated that endpoint alone.
-		expect(ctx.staticData.webhookSecret).toBeUndefined();
+		// The secret survives: a "Test workflow" pass on an active workflow reaches
+		// this same branch, and clearing it would disarm the live endpoint.
+		expect(ctx.staticData.webhookSecret).toBe('whsec_stale');
 		expect(callsOf(ctx.calls, 'PATCH')).toHaveLength(0);
 		expect(callsOf(ctx.calls, 'DELETE')).toHaveLength(0);
 	});
 
 	it('drops ownership when the slot holds a DIFFERENT endpoint id at the same URL', async () => {
-		// The dashboard's natural way to fix an event set is delete + re-create,
-		// which mints a fresh UUID while the URL stays the same. Ownership belongs
-		// to the endpoint, not to this node, so it must not survive that.
+		// Fixing an event set from the dashboard means delete and re-create, which
+		// mints a fresh id while the URL stays the same.
 		listWebhooks([webhook({ id: 'wh_dashboard' })]);
 
 		const ctx = createHookContext({
@@ -152,14 +150,10 @@ describe('trigger: checkExists', () => {
 		await expect(methods.checkExists.call(ctx as unknown as IHookFunctions)).resolves.toBe(true);
 		expect(ctx.staticData.webhookId).toBe('wh_dashboard');
 		expect(ctx.staticData.createdByNode).toBe(false);
-		// A new id means a new secret. Verifying against the old one would reject
-		// every delivery while the workflow looked correctly configured; without a
-		// secret the handler fails closed and says how to re-register.
 		expect(ctx.staticData.webhookSecret).toBeUndefined();
 	});
 
 	it('keeps ownership when the very same endpoint is still in the slot', async () => {
-		// The ordinary re-activation: same id, same URL, still ours to clean up.
 		listWebhooks([webhook()]);
 
 		const ctx = createHookContext({
@@ -232,8 +226,7 @@ describe('trigger: create', () => {
 	});
 
 	it('ignores endpoints belonging to others and registers its own', async () => {
-		// An account holds several endpoints now, so a foreign one is not a
-		// conflict -- but it must still be left completely alone.
+		// An account holds several endpoints, so a foreign one is not a conflict.
 		listWebhooks([webhook({ id: 'wh_theirs', url: FOREIGN_URL })]);
 		nock(BASE_URL)
 			.post('/v1/webhooks')
@@ -250,8 +243,6 @@ describe('trigger: create', () => {
 	});
 
 	it('stores the signing secret disclosed at registration', async () => {
-		// Disclosed exactly once. Losing it means no delivery can be verified
-		// afterwards, so it has to be persisted with the ownership record.
 		listWebhooks([]);
 		nock(BASE_URL)
 			.post('/v1/webhooks')
@@ -317,9 +308,6 @@ describe('trigger: create', () => {
 	});
 
 	it('drops a stale secret when it adopts an endpoint it did not create', async () => {
-		// An adopted endpoint's secret went to whoever registered it, so keeping a
-		// previous one would make the handler verify against the wrong key and
-		// reject every genuine delivery. Failing closed with no secret is correct.
 		listWebhooks([webhook({ id: 'wh_dashboard' })]);
 
 		const ctx = createHookContext({
@@ -330,6 +318,20 @@ describe('trigger: create', () => {
 		await expect(methods.create.call(ctx as unknown as IHookFunctions)).resolves.toBe(true);
 		expect(ctx.staticData.webhookSecret).toBeUndefined();
 		expect(ctx.staticData.createdByNode).toBe(false);
+	});
+
+	it('keeps the secret when the endpoint it re-adopts is the one it registered', async () => {
+		// The secret cannot be re-read, so dropping it here would be unrecoverable.
+		listWebhooks([webhook()]);
+
+		const ctx = createHookContext({
+			parameters: { events: ['run.completed'] },
+			staticData: { webhookId: OUR_ID, createdByNode: true, webhookSecret: 'whsec_ours' },
+		});
+
+		await expect(methods.create.call(ctx as unknown as IHookFunctions)).resolves.toBe(true);
+		expect(ctx.staticData.webhookSecret).toBe('whsec_ours');
+		expect(ctx.staticData.createdByNode).toBe(true);
 	});
 
 	it('surfaces a registration failure that is not a slot conflict', async () => {

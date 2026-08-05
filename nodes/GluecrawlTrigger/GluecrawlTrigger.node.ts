@@ -174,7 +174,8 @@ function verifyInboundDelivery(
 		return {
 			ok: false,
 			reason:
-				'This workflow has no signing secret for its Gluecrawl webhook endpoint, so deliveries cannot be authenticated. Gluecrawl discloses the secret only when the endpoint is registered, so deactivate and reactivate this workflow to register one it owns.',
+				`This workflow has no signing secret for its Gluecrawl webhook endpoint, so deliveries cannot be authenticated. Gluecrawl discloses the secret once, to whoever registers the endpoint, and the endpoint delivering here was registered elsewhere. Delete it at ${DASHBOARD_WEBHOOKS_URL}, then deactivate and reactivate this workflow so it registers an endpoint of its own. ` +
+				'Reactivating on its own is not enough: this workflow would adopt the same endpoint again and still have no secret for it.',
 		};
 	}
 
@@ -332,34 +333,35 @@ export class GluecrawlTrigger implements INodeType {
 				);
 
 				if (!existing) {
-					// The endpoint we knew about is gone (deleted in the dashboard, or the
-					// slot was reassigned). Drop the stale ownership record so `delete`
-					// never targets an id that now belongs to someone else, and the secret
-					// with it -- it authenticated that endpoint and nothing else.
+					// Drop the ownership record so `delete` never targets an id that has
+					// since been reassigned.
+					//
+					// The secret must survive this branch. n8n runs these same hooks for
+					// the `/webhook-test/` URL against the same node-scoped static data,
+					// so "Test workflow" on an active workflow lands here matching no
+					// endpoint, and `create` cannot re-register that URL either because a
+					// non-https target is refused. Clearing the secret here would leave
+					// the live endpoint delivering with nothing left to verify it.
 					delete staticData.webhookId;
 					delete staticData.createdByNode;
-					delete staticData.webhookSecret;
 					return false;
 				}
 
 				await reconcileWebhook.call(this, existing, events);
 
-				// Ownership belongs to the ENDPOINT, not to this node, so it has to be
-				// re-derived BEFORE the id is overwritten. A user who deletes the
-				// endpoint in the dashboard and re-creates it against the same n8n URL
-				// gets a fresh id (ids are UUID primary keys and are never reused);
-				// carrying the flag across that identity change would let a later
-				// deactivation delete an endpoint the user created.
+				// Ownership belongs to the endpoint, so it must be re-derived before the
+				// id is overwritten. Endpoint ids are never reused, so a dashboard
+				// delete-and-recreate at the same URL yields an endpoint this node did
+				// not create and must not delete.
 				const owned = staticData.createdByNode === true && staticData.webhookId === existing.id;
 				const sameEndpoint = staticData.webhookId === existing.id;
 
 				staticData.webhookId = existing.id;
 				// Still sticky in the other direction: only `create` may promote to true.
 				staticData.createdByNode = owned;
-				// A different id at the same URL is a different endpoint with a different
-				// secret. Keeping the old one would fail every signature check while
-				// looking configured; dropping it makes the handler fail closed with the
-				// message that tells the user to re-register.
+				// A stored secret only verifies the endpoint it was issued for; keeping
+				// it across an id change fails every signature check while the workflow
+				// still looks configured.
 				if (!sameEndpoint) {
 					delete staticData.webhookSecret;
 				}
@@ -395,15 +397,16 @@ export class GluecrawlTrigger implements INodeType {
 
 				if (existing) {
 					await reconcileWebhook.call(this, existing, events);
-					// Same identity guard as `checkExists`: the flag may only survive
-					// when the endpoint it was recorded against is still the one here.
-					const owned = staticData.createdByNode === true && staticData.webhookId === existing.id;
+					const sameEndpoint = staticData.webhookId === existing.id;
+					const owned = staticData.createdByNode === true && sameEndpoint;
 					staticData.webhookId = existing.id;
 					staticData.createdByNode = owned;
-					// An adopted endpoint's secret was disclosed only to whoever created
-					// it, so we cannot verify its deliveries. Drop any stale secret so
-					// the webhook handler fails closed rather than against a wrong key.
-					delete staticData.webhookSecret;
+					// An endpoint adopted from another owner signs with a secret this node
+					// was never given, so a stale one must go. Dropping it when the id is
+					// unchanged would instead be unrecoverable.
+					if (!sameEndpoint) {
+						delete staticData.webhookSecret;
+					}
 					return true;
 				}
 
@@ -428,8 +431,8 @@ export class GluecrawlTrigger implements INodeType {
 
 				staticData.webhookId = created.id;
 				staticData.createdByNode = true;
-				// Disclosed exactly once, in this response. Losing it means deliveries
-				// can no longer be verified, so it is persisted with the ownership record.
+				// The signing secret is disclosed exactly once, in this response, and can
+				// never be read back.
 				if (typeof created.secret === 'string') {
 					staticData.webhookSecret = created.secret;
 				} else {
@@ -457,10 +460,9 @@ export class GluecrawlTrigger implements INodeType {
 				const webhookId = typeof staticData.webhookId === 'string' ? staticData.webhookId : '';
 				const createdByNode = staticData.createdByNode === true;
 
-				// The secret goes with the endpoint. Leaving it behind would let the
-				// next activation verify deliveries from a DIFFERENT endpoint (same
-				// URL, new id, new secret) against the old key, and every delivery
-				// would be rejected until the user deactivated again.
+				// The secret is forgotten with the endpoint it belongs to: left behind, it
+				// would be used to verify the next endpoint registered at this URL, whose
+				// deliveries are signed with a different key.
 				const forget = (): void => {
 					delete staticData.webhookId;
 					delete staticData.createdByNode;
@@ -500,11 +502,10 @@ export class GluecrawlTrigger implements INodeType {
 					// otherwise a stuck endpoint keeps delivering into a dead workflow.
 					const alreadyGone = isGluecrawlErrorCode(error, 'not_found');
 					if (!alreadyGone) {
-						// Ownership deliberately survives a failed delete. Clearing it first
-						// would leave the endpoint registered in the account's single slot
-						// with nothing left that is allowed to remove it: the next
-						// activation would adopt it as someone else's and every later
-						// deactivation would skip it forever.
+						// Ownership must survive a failed delete. Cleared here, the endpoint
+						// stays registered with nothing allowed to remove it: the next
+						// activation adopts it as someone else's, and every later
+						// deactivation skips it.
 						throw toGluecrawlApiError(node, error, {
 							context: 'While removing the Gluecrawl webhook endpoint',
 						});
