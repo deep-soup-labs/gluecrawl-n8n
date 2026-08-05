@@ -317,6 +317,21 @@ unattested tarball.
 
 ## Version history
 
+### Unreleased
+
+- **The webhook signing secret no longer outlives the endpoint it belongs to.** Deactivating a
+  trigger workflow cleared the endpoint ownership record but kept the secret. If the endpoint was
+  then re-created — in the dashboard, or by a later activation — the same n8n URL answered to a
+  new endpoint with a new secret, and the stored one rejected every delivery while the workflow
+  looked correctly configured. The secret is now tied to the endpoint id: it is discarded when
+  that id changes or the endpoint is deleted, and kept when the endpoint is unchanged.
+- **The "no signing secret" message now gives advice that works.** It told users to deactivate and
+  reactivate, which cannot help when another endpoint already points at this workflow's URL — the
+  workflow simply adopts it again, still without a secret. It now says to delete that endpoint in
+  the dashboard first.
+- Removed the `subcategories` field from both node codex files, as requested by the n8n node
+  review. n8n reads it only for the `AI` category, so it never had an effect here.
+
 ### 1.0.3
 
 - **Wait for Completion now honours execution cancellation.** Stopping a workflow — from the
