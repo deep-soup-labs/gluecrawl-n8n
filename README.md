@@ -317,7 +317,7 @@ unattested tarball.
 
 ## Version history
 
-### Unreleased
+### 1.0.4
 
 - **The webhook signing secret no longer outlives the endpoint it belongs to.** Deactivating a
   trigger workflow cleared the endpoint ownership record but kept the secret. If the endpoint was
