@@ -78,9 +78,10 @@ every job on the account.
 
 ## Credentials
 
-API keys are available on **every paid plan (Starter and above)**. The Free plan can use the
-dashboard but cannot mint a key — a `403` saying your plan does not include API access is this
-gate, and is fixed on the [pricing page](https://www.gluecrawl.ai/#pricing).
+API keys are available on **every plan, including Free** — one key each. Every operation in this
+node works on a Free key, including the webhook trigger; the one exception is enabling a schedule
+on a job, which returns a `403` saying your plan does not permit scheduling. That gate is lifted on
+the [pricing page](https://www.gluecrawl.ai/#pricing).
 
 1. Sign up at [gluecrawl.ai](https://www.gluecrawl.ai) and verify your email address.
 2. Mint a key in the dashboard under **Settings → API keys**.

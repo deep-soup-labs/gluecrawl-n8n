@@ -117,14 +117,16 @@ describe('GluecrawlApi credential', () => {
 		expect(rule?.properties.message).toMatch(/Base URL/i);
 	});
 
-	it('names both 403 causes and the plan API access starts at', () => {
+	it('names both 403 causes', () => {
 		const rule = credential.test.rules?.find(
 			(entry) => entry.type === 'responseCode' && entry.properties.value === 403,
 		);
 		const message = String(rule?.properties.message);
 
-		// API access starts at Starter, so that is the plan to point at.
-		expect(message).toMatch(/Starter or above/);
+		// Every plan includes the API, so the message must not name a tier to
+		// upgrade to — that would send a user to buy what they already have.
+		expect(message).not.toMatch(/Starter/);
+		expect(message).toMatch(/API access/);
 		// 403 is two different failures; both have to be named or the user
 		// upgrades a plan when the real problem was an unverified email.
 		expect(message).toMatch(/unverified|verif/i);
