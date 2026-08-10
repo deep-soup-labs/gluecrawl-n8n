@@ -29,7 +29,7 @@ export class GluecrawlApi implements ICredentialType {
 			default: '',
 			required: true,
 			description:
-				'Your Gluecrawl API key. API access requires a Starter plan or above; an account has one active key at a time, minted in the Gluecrawl dashboard under Settings. Rotating the key in the dashboard invalidates the old one immediately.',
+				'Your Gluecrawl API key. Every plan includes API access, Free included; an account has one active key at a time, minted in the Gluecrawl dashboard under Settings. Rotating the key in the dashboard invalidates the old one immediately.',
 		},
 		{
 			displayName: 'Base URL',
@@ -86,7 +86,7 @@ export class GluecrawlApi implements ICredentialType {
 				properties: {
 					value: 403,
 					message:
-						'The key was recognised but the account cannot use the API. Either its email address is unverified, or its plan does not include API access — that requires Starter or above.',
+						'The key was recognised but the account cannot use the API. Its email address is most likely unverified; the account may also be on a plan that does not include API access.',
 				},
 			},
 		],

@@ -78,9 +78,10 @@ every job on the account.
 
 ## Credentials
 
-API keys are available on **every paid plan (Starter and above)**. The Free plan can use the
-dashboard but cannot mint a key — a `403` saying your plan does not include API access is this
-gate, and is fixed on the [pricing page](https://www.gluecrawl.ai/#pricing).
+API keys are available on **every plan, including Free** — one key each. Every operation in this
+node works on a Free key, including the webhook trigger; the one exception is enabling a schedule
+on a job, which returns a `403` saying your plan does not permit scheduling. That gate is lifted on
+the [pricing page](https://www.gluecrawl.ai/#pricing).
 
 1. Sign up at [gluecrawl.ai](https://www.gluecrawl.ai) and verify your email address.
 2. Mint a key in the dashboard under **Settings → API keys**.
@@ -316,6 +317,17 @@ unattested tarball.
 - [Issues and feature requests](https://github.com/deep-soup-labs/gluecrawl-n8n/issues)
 
 ## Version history
+
+### 1.0.5
+
+- **API access is on every Gluecrawl plan, free included, and the node now says so.** The
+  credential field and the 403 hint both told users that API access requires a Starter plan or
+  above. That was true when it was written and is not any more, so a free user reading it would
+  buy a plan to get a key they already had. Enabling a schedule on a job is the one operation a
+  paid plan gates; every other operation in this node, the trigger included, works on a free key.
+- The 403 hint no longer names a plan at all. It covers two different failures — an unverified
+  email address and a plan without API access — and it is now almost always the former, so
+  pointing at an upgrade sent people to fix the wrong thing.
 
 ### 1.0.4
 

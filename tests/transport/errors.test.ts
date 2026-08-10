@@ -71,10 +71,9 @@ describe('every documented error code is mapped', () => {
 	});
 
 	it('403 plan_required echoes the API message and adds the upgrade URL', () => {
-		// API access starts at Starter, so the API's own wording is correct and is
-		// passed through — naming a plan here would be a second place to keep in
-		// sync with `gluecrawl_schemas.plans`.
-		const upstream = 'This endpoint requires a Starter plan or higher.';
+		// The API's own wording is passed through verbatim — restating it here
+		// would be a second place to keep in sync with `gluecrawl_schemas.plans`.
+		const upstream = 'This endpoint requires a plan that permits it.';
 		const error = mapped(403, 'plan_required', upstream);
 
 		expect(error.message).toBe('The Gluecrawl account is on a plan without API access');
