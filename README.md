@@ -318,6 +318,17 @@ unattested tarball.
 
 ## Version history
 
+### 1.0.5
+
+- **API access is on every Gluecrawl plan, free included, and the node now says so.** The
+  credential field and the 403 hint both told users that API access requires a Starter plan or
+  above. That was true when it was written and is not any more, so a free user reading it would
+  buy a plan to get a key they already had. Enabling a schedule on a job is the one operation a
+  paid plan gates; every other operation in this node, the trigger included, works on a free key.
+- The 403 hint no longer names a plan at all. It covers two different failures — an unverified
+  email address and a plan without API access — and it is now almost always the former, so
+  pointing at an upgrade sent people to fix the wrong thing.
+
 ### 1.0.4
 
 - **The webhook signing secret no longer outlives the endpoint it belongs to.** Deactivating a
